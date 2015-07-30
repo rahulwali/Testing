@@ -1,5 +1,5 @@
 //
-//  ViewController.h
+//  slider.h
 //  aaa
 //
 //  Created by cirmac3 on 6/23/15.
@@ -8,9 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
-
-- (IBAction)showRightMenuPressed:(UIButton *)sender;
+@interface slider : UIViewController
 
 @end
-

@@ -7,7 +7,8 @@
 //
 
 #import "AppDelegate.h"
-
+#import "ViewController.h"
+#import "MFSideMenuContainerViewController.h"
 @interface AppDelegate ()
 
 @end
@@ -17,7 +18,28 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+  /*   UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:[NSBundle mainBundle]];
+    MFSideMenuContainerViewController *container = (MFSideMenuContainerViewController *)self.window.rootViewController;
+    UINavigationController *navigationController = [storyboard instantiateViewControllerWithIdentifier:@"navigationController"];
+  
+    
+    UIViewController *rightSideMenuViewController = [storyboard instantiateViewControllerWithIdentifier:@"rightSideMenuViewController"];
+   
+    
+   
+    [container setRightMenuViewController:rightSideMenuViewController];
+    
     return YES;
+    */ UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:[NSBundle mainBundle]];
+     MFSideMenuContainerViewController *container = (MFSideMenuContainerViewController *)self.window.rootViewController;
+     UINavigationController *navigationController = [storyboard instantiateViewControllerWithIdentifier:@"navigationController"];
+    
+     UIViewController *rightSideMenuViewController = [storyboard instantiateViewControllerWithIdentifier:@"rightSideMenuViewController"];
+     
+     [container setRightMenuViewController:rightSideMenuViewController];
+     [container setCenterViewController:navigationController];
+     return YES;
+
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {

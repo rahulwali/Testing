@@ -14,6 +14,13 @@
 		0255F8CC1B3945F900E25CE7 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0255F8CB1B3945F900E25CE7 /* Images.xcassets */; };
 		0255F8CF1B3945F900E25CE7 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 0255F8CD1B3945F900E25CE7 /* LaunchScreen.xib */; };
 		0255F8DB1B3945FA00E25CE7 /* aaaTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0255F8DA1B3945FA00E25CE7 /* aaaTests.m */; };
+		0255F8E61B39468B00E25CE7 /* slider.m in Sources */ = {isa = PBXBuildFile; fileRef = 0255F8E51B39468B00E25CE7 /* slider.m */; };
+		0255F8F21B3949D400E25CE7 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0255F8F11B3949D400E25CE7 /* UIKit.framework */; };
+		0255F8F41B3949DA00E25CE7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0255F8F31B3949DA00E25CE7 /* Foundation.framework */; };
+		0255F8F61B3949E000E25CE7 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0255F8F51B3949E000E25CE7 /* CoreGraphics.framework */; };
+		0255F8FE1B3950B300E25CE7 /* MFSideMenuContainerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 0255F8F91B3950B200E25CE7 /* MFSideMenuContainerViewController.m */; };
+		0255F8FF1B3950B300E25CE7 /* MFSideMenuShadow.m in Sources */ = {isa = PBXBuildFile; fileRef = 0255F8FB1B3950B200E25CE7 /* MFSideMenuShadow.m */; };
+		0255F9001B3950B300E25CE7 /* UIViewController+MFSideMenuAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 0255F8FD1B3950B300E25CE7 /* UIViewController+MFSideMenuAdditions.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +47,18 @@
 		0255F8D41B3945FA00E25CE7 /* aaaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = aaaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0255F8D91B3945FA00E25CE7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0255F8DA1B3945FA00E25CE7 /* aaaTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = aaaTests.m; sourceTree = "<group>"; };
+		0255F8E41B39468B00E25CE7 /* slider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = slider.h; sourceTree = "<group>"; };
+		0255F8E51B39468B00E25CE7 /* slider.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = slider.m; sourceTree = "<group>"; };
+		0255F8F11B3949D400E25CE7 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		0255F8F31B3949DA00E25CE7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		0255F8F51B3949E000E25CE7 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		0255F8F71B3950B200E25CE7 /* MFSideMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFSideMenu.h; sourceTree = "<group>"; };
+		0255F8F81B3950B200E25CE7 /* MFSideMenuContainerViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFSideMenuContainerViewController.h; sourceTree = "<group>"; };
+		0255F8F91B3950B200E25CE7 /* MFSideMenuContainerViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFSideMenuContainerViewController.m; sourceTree = "<group>"; };
+		0255F8FA1B3950B200E25CE7 /* MFSideMenuShadow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFSideMenuShadow.h; sourceTree = "<group>"; };
+		0255F8FB1B3950B200E25CE7 /* MFSideMenuShadow.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFSideMenuShadow.m; sourceTree = "<group>"; };
+		0255F8FC1B3950B200E25CE7 /* UIViewController+MFSideMenuAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIViewController+MFSideMenuAdditions.h"; sourceTree = "<group>"; };
+		0255F8FD1B3950B300E25CE7 /* UIViewController+MFSideMenuAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+MFSideMenuAdditions.m"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +66,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0255F8F61B3949E000E25CE7 /* CoreGraphics.framework in Frameworks */,
+				0255F8F41B3949DA00E25CE7 /* Foundation.framework in Frameworks */,
+				0255F8F21B3949D400E25CE7 /* UIKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,6 +85,18 @@
 		0255F8B21B3945F800E25CE7 = {
 			isa = PBXGroup;
 			children = (
+				0255F8F51B3949E000E25CE7 /* CoreGraphics.framework */,
+				0255F8F31B3949DA00E25CE7 /* Foundation.framework */,
+				0255F8F11B3949D400E25CE7 /* UIKit.framework */,
+				0255F8E41B39468B00E25CE7 /* slider.h */,
+				0255F8E51B39468B00E25CE7 /* slider.m */,
+				0255F8F71B3950B200E25CE7 /* MFSideMenu.h */,
+				0255F8F81B3950B200E25CE7 /* MFSideMenuContainerViewController.h */,
+				0255F8F91B3950B200E25CE7 /* MFSideMenuContainerViewController.m */,
+				0255F8FA1B3950B200E25CE7 /* MFSideMenuShadow.h */,
+				0255F8FB1B3950B200E25CE7 /* MFSideMenuShadow.m */,
+				0255F8FC1B3950B200E25CE7 /* UIViewController+MFSideMenuAdditions.h */,
+				0255F8FD1B3950B300E25CE7 /* UIViewController+MFSideMenuAdditions.m */,
 				0255F8BD1B3945F800E25CE7 /* aaa */,
 				0255F8D71B3945FA00E25CE7 /* aaaTests */,
 				0255F8BC1B3945F800E25CE7 /* Products */,
@@ -221,7 +255,11 @@
 			files = (
 				0255F8C71B3945F900E25CE7 /* ViewController.m in Sources */,
 				0255F8C41B3945F900E25CE7 /* AppDelegate.m in Sources */,
+				0255F8E61B39468B00E25CE7 /* slider.m in Sources */,
 				0255F8C11B3945F900E25CE7 /* main.m in Sources */,
+				0255F8FF1B3950B300E25CE7 /* MFSideMenuShadow.m in Sources */,
+				0255F8FE1B3950B300E25CE7 /* MFSideMenuContainerViewController.m in Sources */,
+				0255F9001B3950B300E25CE7 /* UIViewController+MFSideMenuAdditions.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

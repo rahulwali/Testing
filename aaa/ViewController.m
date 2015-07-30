@@ -7,7 +7,7 @@
 //
 
 #import "ViewController.h"
-
+#import "MFSideMenu.h"
 @interface ViewController ()
 
 @end
@@ -24,4 +24,8 @@
     // Dispose of any resources that can be recreated.
 }
 
+- (IBAction)showRightMenuPressed:(UIButton *)sender {
+    
+    [self.menuContainerViewController toggleRightSideMenuCompletion:nil];
+}
 @end
