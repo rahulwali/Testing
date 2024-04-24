@@ -1,0 +1,3631 @@
+
+public class S_Add_New_Price_ProductFinal extends Fragment implements ResponseListener {
+
+    // rw on 20 DEC 2022 AT 3:20 PM
+    public static final int PAGE_START = 0;
+    private AppPreferences appPreferences;
+    private RecyclerView productListRecycleVW;
+    private CD_F_Product_Price_Update_Adapter2 cd_productPriceAdapter3;
+    private CD_F_ProductType SingleCatModel;
+    private AlertDialog alertDialog;
+    private ArrayList<ProductModel> Products;
+    private ArrayList<ProductModel> ProductsCache;
+    private ArrayList<UnitModel> unitList;
+    private int totalSelectedNumber = 0;
+    //  @BindView(R.id.progressBar)
+    private int start = 11, end = 20;
+    private int PAGE_CYCLE_SET = 10;
+    private int currentPage = PAGE_START;
+    private int total_records = 0;
+    private int no_of_page;
+    private NestedScrollView idNestedSV;
+
+    private View fragmentView;
+    private SharedPreferences prefs;
+    private String getProductUrl;
+    private String seller_country = "IN";
+    private ProgressBar prod_horizontalProgressBar; // Add ProgressBar reference
+
+    // new code
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View rootView = inflater.inflate(R.layout.item_product, container, false);
+
+        appPreferences = new AppPreferences(requireActivity());
+
+
+        // new cde
+        appPreferences = new AppPreferences(requireActivity());
+        prefs = requireActivity().getSharedPreferences("API_URLS", Context.MODE_PRIVATE);
+        getProductUrl = prefs.getString("getAllFoodProductsApi", "");
+        prod_horizontalProgressBar = rootView.findViewById(R.id.prod_horizontal_progress_bar);
+        seller_country = appPreferences.getGlobalCountrySellerUser();
+        productListRecycleVW = rootView.findViewById(R.id.cd_product_price_recycleVW);
+
+        //end cnew code
+        // Retrieve JSON data from bundle
+        Bundle bundle = getArguments();
+        if (bundle != null) {
+
+            String subCategoryId = bundle.getString("subCategoryId");
+            String subCategoryName = bundle.getString("subCategoryName");
+
+            // Set up action bar
+            // Set the title of the AppBar (ActionBar)
+            ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setTitle(subCategoryName);
+            }
+
+            setHasOptionsMenu(true); // Notify the system that this fragment has options menu items
+            callApiForAnotherScreen(subCategoryId);
+        }
+
+
+        return fragmentView;
+    }
+
+
+    private void callApiForAnotherScreen(String subCategoryId) {
+
+// new code from here
+        // Show ProgressBar before sending the request
+        prod_horizontalProgressBar.setVisibility(View.VISIBLE);
+
+        // Prepare the request object with required parameters
+        JSONObject items = new JSONObject();
+        try {
+            items.put("api", "get_foo_product_api");
+            items.put("country", seller_country);
+            items.put("language", LanguageUtils.getLanguageAbbreviation(requireActivity()));
+            items.put("sub_category_id", subCategoryId);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // Prepare the request object with the items object
+        JSONObject requestObject = new JSONObject();
+        try {
+            requestObject.put("items", items);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // Encrypt the request object if needed using AESUtil.encrypt
+        JSONObject encryptedRequestObject = encryptRequestIfNeeded(requestObject);
+        // Define your API URL here
+        String apiUrl = Constants.BASE_URL + getProductUrl;
+        Log.e("CIBERJSON  in MTHOD :-->  ", apiUrl);
+
+        if (encryptedRequestObject != null) {
+            // Send the encrypted request to the server
+            CustomVolleyManager.getInstance().sendEncryptedRequestGetProduct_PBar(
+                    this, // Pass the ResponseListener instance
+                    requireActivity(), // Pass the Context as ResponseListener
+                    prod_horizontalProgressBar, // Pass the ProgressBar
+                    encryptedRequestObject.toString(), // Convert JSONObject to String
+                    apiUrl, // Specify your API URL
+                    false, // Set to true for decrypting the response
+                    1234 // Request code
+            );
+        } else {
+            Log.e("EncryptionError", "Error encrypting request object");
+        }
+    }
+
+    private JSONObject encryptRequestIfNeeded(JSONObject requestObject) {
+        try {
+            if (!requestObject.has("encryptedData")) {
+                String encryptedData = AESUtil.encrypt(requestObject.toString());
+                JSONObject encryptedRequestObject = new JSONObject();
+                encryptedRequestObject.put("encryptedData", encryptedData);
+                return encryptedRequestObject;
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        setUpMainHeaderView();
+    }
+    // end code
+
+
+    public void setUpMainHeaderView() {
+
+
+        System.out.println("CIBER PATH S_Add_New_Price_ProductFinal");
+        //     System.out.println("Current PATH IS  :-->" + CSShearedPrefence.GetSellerGloablFragmentID());
+        if (getArguments() != null) {
+
+            SingleCatModel = new CD_F_ProductType();
+            SingleCatModel = (CD_F_ProductType) getArguments().getParcelable("POSITIION");
+            total_records = getArguments().getInt("TOTAL_COUNT");
+            System.out.println("CIBERJSONXXXXX submodule :-->" + getArguments().getInt("CAT_ID"));
+            Log.e("SingleCatModel :--> ", "getCat_id :--> " + SingleCatModel.getCat_id());
+
+            setId();
+            //        scrolling_total_records.setText(String.valueOf(total_records));
+            //  scrolling_records.setText(String.valueOf(PAGE_CYCLE_SET));
+            //  toolbar_backPressIV.setOnClickListener(v -> csActivity.onBackPressed());
+
+            //    toolbar_titleTV.setText(getArguments().getString("CAT_NAME")); by rahu lwali on 06 march
+            Products = new ArrayList<>();
+            Products = SingleCatModel.getProducts();
+
+            for (int i = 0; i < Products.size(); i++) {
+                Products.get(i).setChecked(false);
+
+                Products.get(i).setValues(SingleCatModel.getUnits().get(0).getValue());          // SETTING VALUES OF FIRST ARRAY
+            }
+            unitList = new ArrayList();                 //get Units from list
+            unitList = SingleCatModel.getUnits();
+            ArrayList<String> temp = new ArrayList();
+            for (int i = 0; i < SingleCatModel.getUnits().size(); i++) {
+                temp.add(unitList.get(i).getName());
+
+            }
+
+            for (int i = 0; i < Products.size(); i++) {
+                Products.get(i).setLastSavedNamePosition(0);                // store SAVED NAME POSITION
+                Products.get(i).setLastSavedValuePosition(0);               // store SAVED VALUE POSITION
+                Products.get(i).setNames(temp);
+            }
+            ProductsCache = Products;
+            //  new CustomRecyclerViewScroll(productListRecycleVW, this);
+            cd_productPriceAdapter3 = new CD_F_Product_Price_Update_Adapter2(getActivity());
+            productListRecycleVW.setAdapter(cd_productPriceAdapter3);
+            //   productListRecycleVW.setLayoutManager(new WrapContentLinearLayoutManager(getActivity()));
+            productListRecycleVW.setItemViewCacheSize(Products.size());
+// RW ON 20 DEC 2022 AT 3:23 PM GETTING PAGES
+            no_of_page = (total_records) / PAGE_CYCLE_SET;
+            BigDecimal bd = new BigDecimal(total_records - PAGE_CYCLE_SET);
+            bd = bd.setScale(2, RoundingMode.HALF_UP);
+            double d = bd.doubleValue();
+
+//            if (d / PAGE_CYCLE_SET != 0) {
+//                no_of_page = no_of_page + 1;
+//                System.out.println("CHECKING CDVALUE decimal increased one :-->" + no_of_page);
+//            }
+//RW ON 20 DEC 2022 AT 3:23 GETTING NO OF PAGES ITS GOING TO GET
+//            checkout_tv.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    if (validation()) {
+//                        apiHit(); // rw 18th march 2022 at 11:24
+//                        if (checkInternet) {
+//                            new WebServiceBodyResponseViaPost(S_Add_New_Price_ProductFinal.this
+//                                    , getActivity(), apiHit()
+//                                    , S_DELETE_PRODUCT, getResources().getString(R.string.please_wait)
+//                                    , false).execute();
+//                        }
+//                    }
+//
+//                }
+//            });
+
+
+        }
+    }
+
+
+    private void getDataFromAPI(int start, int end) {
+        if (currentPage >= no_of_page) {
+            // showToast("That's all the data..");
+
+            // hiding our progress bar.
+            //   progressBar.setVisibility(View.GONE);
+            return;
+
+        }
+
+
+        if (appPreferences.getGlobalModuleSelected().equalsIgnoreCase("PHA")) {
+
+//            new Volley_Asynclass(this, getActivity(), formProductData(start, end), Constants.SELLER_PRODUCT,
+//                    false, 123456);
+            currentPage++;
+        } else {
+//            new Volley_Asynclass(this, getActivity(), formProductData(start, end), Constants.SELLER_PRODUCT,
+//                    false, 1234);
+//            currentPage++;
+        }
+
+
+    }
+
+
+//    private String formProductData(int start, int end) {
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//        System.out.println("PRINTING--> USER NAME :--> " + CSShearedPrefence.getUserName());
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "GET_FOO_DEFAULT_PRODUCTS");
+//                jsonObject.put("MODULE", Integer.parseInt(SingleCatModel.getCat_id()));
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "GET_KAR_DEFAULT_PRODUCTS");
+//                jsonObject.put("MODULE", Integer.parseInt(SingleCatModel.getCat_id()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "GET_AGR_DEFAULT_PRODUCTS");
+//                jsonObject.put("MODULE", Integer.parseInt(SingleCatModel.getCat_id()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                jsonObject.put("API", "GET_PHA_DEFAULT_PRODUCTS");
+//                jsonObject.put("MODULE", Integer.parseInt(SingleCatModel.getCat_id()));
+//            }
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("START", start);
+//            jsonObject.put("END", end);
+//            jsonObject.put("LANG", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USER_NAME", CSShearedPrefence.getUserName());
+//            jsonObject1.put("items", jsonObject);
+//
+//            Log.e("UPDATE_PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+//            Log.e("UPDATE_PRICE", "json final orbject " + urlString);
+//
+//        } catch (JSONException je) {
+//            je.printStackTrace();
+//        }
+//        return urlString;
+//    }
+
+//    private String apiHit() {
+////        validation();
+//        JSONArray jsonArray = new JSONArray();
+//        JSONObject jsonObj = new JSONObject();
+//        JSONObject jsonObj2 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            JSONObject JsonProducts = new JSONObject();
+//            JSONArray jsonArrayProducts = new JSONArray();
+//            JSONObject jsonProduct = null, jsonObject = null;
+//            for (int i = 0; i < Products.size(); i++) {
+//                if (Products.get(i).isChecked()) {
+//                    //     Log.e("product update ", "getname " + Products.get(i).getProduct_name());
+//                    jsonProduct = new JSONObject();
+//                    jsonObject = new JSONObject();
+//                    JSONArray jsonQuantArray = new JSONArray();
+//                    jsonObject.put("PRODUCT_ID", Products.get(i).getProduct_id());
+////                    jsonProduct.put("NAME", Products.get(i).getProduct_name());
+//                    //    Log.e("product update ", "getname " + Products.get(i).getProduct_name());
+//
+//                    ArrayList<PriceModel> priceModels = new ArrayList<>();
+//                    priceModels = Products.get(i).getPrice();
+//                    for (int j = 0; j < priceModels.size(); j++) {
+//                        Log.e("product update ", "get quant " + priceModels.get(j).getType());
+//                        JSONObject QuantityProduct = new JSONObject();
+//                        QuantityProduct.put("PRODUCT_TYPE", priceModels.get(j).getType());
+//                        QuantityProduct.put("MRP", priceModels.get(j).getMrp());
+//                        QuantityProduct.put("SELL", priceModels.get(j).getSell());
+//                        QuantityProduct.put("BUY", priceModels.get(j).getBuy());
+//                        QuantityProduct.put("ID", priceModels.get(j).getId());
+//                        QuantityProduct.put("CASH_BACK", priceModels.get(j).getCashBack());
+//                        jsonQuantArray.put(QuantityProduct);
+//                    }
+////                    String encPrice = CDEncryption.encryptMyData(jsonQuantArray.toString());
+//                    Log.e("PRICE_ARRAY>>>>", "unit id id " + jsonQuantArray.get(0).toString());
+//                    jsonProduct.put("COSTING", jsonQuantArray);
+//                    jsonProduct.put("UNIT_ID", Products.get(i).getUnit_id().split("~")[0]);
+//                    jsonProduct.put("UNIT_NAME", Products.get(i).getUnit_id().split("~")[1]);
+//                    String encPrice = CDEncryption.encryptMyData(jsonProduct.toString());
+//                    jsonObject.put("PRICE", encPrice);
+//                    jsonArrayProducts.put(jsonObject);
+//                }
+//
+//            }
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equals("FOO")) {
+//                JsonProducts.put("API", "FOOD_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equals("KAR")) {
+//                JsonProducts.put("API", "KAR_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", 2);
+//
+//            } else {
+//                JsonProducts.put("API", "AGR_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", CFUtil.getModuleTypeAGR(CSShearedPrefence.getSubModule()));
+//
+//            }
+//            JsonProducts.put("PRODUCTS", jsonArrayProducts);
+//            JsonProducts.put("USERNAME", CSShearedPrefence.getUserName());
+//            JsonProducts.put("CURD_OPRATION", "I");
+//            JsonProducts.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            JsonProducts.put("CATEGORYID",getArguments().getInt("CAT_ID"));
+//            jsonObj.put("items", JsonProducts);
+//        //    Log.e("RAHULXXXXXX ", "....111,,.. " + jsonObj.toString());
+//        } catch (JSONException je) {
+//            je.printStackTrace();
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//
+//        }
+//        return jsonObj.toString();
+//    }
+
+    private boolean validation() {
+//        Products
+        if (totalSelectedNumber != 0) {
+
+            for (int i = 0; i < Products.size(); i++) {
+
+                if (Products.get(i).isChecked()) {
+                    Log.e("product update ", "getname " + Products.get(i).getProduct_name());
+                    ArrayList<PriceModel> priceModels = new ArrayList<>();
+                    priceModels = Products.get(i).getPrice();
+                    try {
+                        if (priceModels.size() != 0) {
+
+                            for (int j = 0; j < priceModels.size(); j++) {
+                                if (priceModels.get(j).getBuy().equals("0")) {
+                                    // showToast("Enter BUY price(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_enter_buy_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+
+                                    return false;
+                                } else if (priceModels.get(j).getMrp().equals("0")) {
+                                    //   showToast("Enter MRP price(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_enter_mrp_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+                                    return false;
+                                } else if (priceModels.get(j).getSell().equals("0")) {
+
+                                    //     showToast("Enter SELL price(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_enter_sell_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+
+                                    return false;
+                                }
+                                // MRP VALIDATION STARTS FROM HERE
+                                // mrp lower than actual cost
+                                else if (parseStringToDouble(priceModels.get(j).getMrp(), 0.00) < parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_mrp_lower_actual_cost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                }
+
+                                // SELL PRICE VALUDATION
+                                //sell price lower than  actual cost (buyprice)
+                                else if (parseStringToDouble(priceModels.get(j).getSell(), 0.00) < parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_sell_price_lower_actualcost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                } // Seller price lowe tham cashback
+
+                                else if (parseStringToDouble(priceModels.get(j).getSell(), 0.00) < parseStringToDouble(priceModels.get(j).getCashBack(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_actualcost_lower_sellprice_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                } else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= (parseStringToDouble(priceModels.get(j).getSell(), 0.00) - parseStringToDouble(priceModels.get(j).getBuy(), 0.00))) {
+
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_cashback_greater_minus_sell_minus_acutal_cost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                }
+
+                                // CASHBACK  VALUDATION
+                                //cashback cannot be greater than actual cost (buyprice)
+                                else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= parseStringToDouble(priceModels.get(j).getSell(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_cahback_greater_actualcost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+
+
+                                    return false;
+                                } // Cashback canot be greater than sell price
+
+                                else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+                                    redshowCenteredToast(requireActivity(), getResources().getString(R.string.product_cashback_greater_sell_price_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+
+
+                                    return false;
+                                }
+                            }
+                        } else {
+//                        showCustomDialogupriceModelse("Atleast add one product"+Products.get(i).getProduct_name());
+                        }
+
+                    } catch (NullPointerException e) {
+                        redshowCenteredToast(requireActivity(), getResources().getString(R.string.S_Update_Price_Message));
+                        return false;
+
+                    }
+
+                }
+            }
+
+        } else {
+            redshowCenteredToast(requireActivity(), getResources().getString(R.string.S_Update_Price_Message));
+            return false;
+        }
+
+        return true;
+    }
+
+//    private void apiForProducts() {
+//        if (appPreferences.getGlobalModuleSelected().equalsIgnoreCase("PHA")) {
+//
+//            new Volley_Asynclass(this, getActivity(), formProductData(start, end), Constants.SELLER_PRODUCT,
+//                    false, 123456);
+//
+//        } else {
+//
+//            new Volley_Asynclass(this, getActivity(), formProductData(start, end), Constants.SELLER_PRODUCT,
+//                    false, 1234);
+//        }
+//    }
+
+   /* private void showToast(String s) {
+        Toast t = Toast.makeText(S_Add_New_Price_ProductFinal.this
+                , s, Toast.LENGTH_SHORT);
+        t.setGravity(Gravity.CENTER, 0, 0);
+        t.show();
+    }*/
+
+    /*  private void showCustomDialogue(String message) {
+          new CustomDialogClass(S_Add_New_Price_ProductFinal.this, message).show();
+      }
+  */
+    private void setId() {
+        productListRecycleVW = fragmentView.findViewById(R.id.cd_product_price_recycleVW);
+        productListRecycleVW.setHasFixedSize(true);
+        productListRecycleVW.setItemViewCacheSize(30);
+        productListRecycleVW.setDrawingCacheEnabled(true);
+        productListRecycleVW.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+    }
+
+
+//    @Override
+//    public void onRequestComplete(String loadedString) {
+//        if (!loadedString.equals("") && loadedString != null && !loadedString.equals("Exception")) {
+//            Log.e("response", "response.... " + loadedString);
+//
+//            try {
+//                JSONObject jsonObject = new JSONObject(loadedString);
+//                if (jsonObject.has("RESPONSE")) {
+//                    JSONObject jsonObject1 = jsonObject.getJSONObject("RESPONSE");
+//                    if (jsonObject1.getString("RESPONSECODE").equals("0")) {
+//                        // showToast(jsonObject1.getString("DESCRIPTION"));
+//                        CDtoastIconSuccess(jsonObject1.getString("DESCRIPTION"));
+//                        getActivity().onBackPressed();
+//                    } else {
+//                        //   showToast(jsonObject1.getString("DESCRIPTION"));
+//                        redshowCenteredToast(requireActivity(),jsonObject1.getString("DESCRIPTION"));
+//                    }
+//                }
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//                FirebaseCrashlytics.getInstance().recordException(e);
+//            }
+//        } else {
+//            // 30 AUG 2023 AT 10:17 AM     CSDialogUtil.showInfoDialogNoInternet(getActivity(), 000);
+//        }
+//
+//
+//    }
+
+
+//    @Override
+//    public void setClickOnListener() {
+//
+//    }
+
+
+    //********************************************************************************************
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+        }
+    }
+
+    @Override
+    public void onGetResponse(String loadedString, int requestCode) {
+
+
+    }
+
+//    @Override
+//    public void onNetworkConnectionChanged(boolean isConnected) {
+//        checkInternet = isConnected;
+//        if (checkInternet) {
+//            if (alertDialog != null) {
+//                alertDialog.dismiss();
+//            }
+//        } else {
+//            // 30 AUG 2023 AT 10:17 AM  alertDialog = CSDialogUtil.showInfoDialogNoInternet(CSApplicationHelper.application().getActivity(), 0000);
+//
+//        }
+//    }
+
+    @Override
+    public void onFail() {
+
+    }
+
+    @Override
+    public void onFail(String message) {
+
+    }
+
+    // end
+    @Override
+    public void onGetResponse(JSONObject jsonObject, int requestCode) {
+
+        // Log.e("dukaan onGetResponse - 1 ", jsonObject.toString());
+        if (requestCode == 1234) { // getting parsing of sub_category
+            setRecycleData(jsonObject);
+            // Hide ProgressBar after data is rendered
+            //   progressBar.setVisibility(View.GONE);
+        } else {
+            // If requestCode is neither 100 nor 200, show a toast
+            showCenteredToast(requireActivity(), "Sorry, nothing found.xxx");
+        }
+    }
+
+    // ne w
+
+//    private void setRecycleData(JSONObject jsonObject) {
+//        prod_horizontalProgressBar.setVisibility(View.VISIBLE);
+//        if (prod_horizontalProgressBar.getVisibility() == View.VISIBLE)
+//            prod_horizontalProgressBar.setVisibility(View.INVISIBLE);
+//
+//        //    progressBarPrice.setVisibility(View.VISIBLE); // RW 14 DEC 2022 AT 05:58 AM
+//        try {
+//
+//
+//            ArrayList<CD_F_ProductType> productAndUnitList = new ArrayList<>();
+//            {  // Initialize unitList
+//                ArrayList<UnitModel> unitList = new ArrayList<>();
+//
+//                CD_F_ProductType tempModel;
+//                JSONArray unitJSONarray = jsonObject.getJSONArray("units");
+//                tempModel = new CD_F_ProductType();
+//                ArrayList<UnitModel> UnitsModel = new ArrayList<>();                 // getting UNITS
+//                for (int j = 0; j < unitJSONarray.length(); j++) {
+//                    UnitModel tempUnit = new UnitModel();
+//                    tempUnit.setName(unitJSONarray.getJSONObject(j).getString("unit_type"));
+//                    JSONArray valuesArray = unitJSONarray.getJSONObject(j).getJSONArray("values");
+//                    ArrayList<String> values = new ArrayList<>();
+//                    for (int k = 0; k < valuesArray.length(); k++) {
+//                        values.add(valuesArray.getString(k));
+//                    }
+//                    tempUnit.setValue(values);
+//                    UnitsModel.add(tempUnit);
+////                        unitList.add(tempUnit);
+//                }
+//                tempModel.setUnits(UnitsModel);
+//
+//
+//                if (jsonObject.has("products")) {
+//                    JSONArray productSONarray = jsonObject.getJSONArray("products");
+//                    ArrayList<ProductModel> productData = new ArrayList<>();
+//                    for (int j = 0; j < productSONarray.length(); j++) {             // getting PRODUCT
+//                        ProductModel productType = new ProductModel();
+//                        productType.setProduct_id(productSONarray.getJSONObject(j).getString("product_id"));
+//                        productType.setProduct_name(productSONarray.getJSONObject(j).getString("eng"));
+//                        productType.setProduct_image(productSONarray.getJSONObject(j).getString("image_url"));
+//                        // RW 24TH MAY 2023 AT 11:29 AM    productType.setproduct_status(productSONarray.getJSONObject(j).getString("PRODUCT_STATUS"));
+//                        // RW 24TH MAY 2023 AT 11:29 AM     System.out.println("CDVALUE PRODDUCT SATUS :--> " + productSONarray.getJSONObject(j).getString("PRODUCT_STATUS"));
+//                        productType.setChecked(false);
+//                        productType.setLastSavedNamePosition(0);                // store SAVED NAME POSITION
+//                        productType.setLastSavedValuePosition(0);
+//                        productType.setValues(unitList.get(0).getValue());
+//                        ArrayList<String> temp = new ArrayList<>();
+//                        for (UnitModel aaa : tempModel.getUnits()) {
+//                            temp.add(aaa.getName());
+//                        }
+//                        productType.setNames(temp);
+//                        productData.add(productType);
+//                    }
+//                    Products.addAll(productData);
+//                    SingleCatModel.setProducts(Products);
+//                    ProductsCache = SingleCatModel.getProducts();// rw on 20 dec 9:44 am
+//                    tempModel.setProducts(productData);
+//                    productAndUnitList.add(tempModel);
+//                    //   show_Log_Data("productAndUnitList" + "productData" + productData.size());
+//                }
+//                cd_productPriceAdapter3.notifyDataSetChanged();
+//                //   adapter.notifyDataSetChanged();
+//
+//                prod_horizontalProgressBar.setVisibility(View.GONE);
+//            }
+//
+//        } catch (Exception e) {
+//            FirebaseCrashlytics.getInstance().recordException(e);
+//            System.out.println("ERROR LOG :--> " + e);
+//        }
+//
+//    }
+
+    private void setRecycleData(JSONObject jsonObject) {
+        prod_horizontalProgressBar.setVisibility(View.VISIBLE);
+        if (prod_horizontalProgressBar.getVisibility() == View.VISIBLE)
+            prod_horizontalProgressBar.setVisibility(View.INVISIBLE);
+
+        try {
+            ArrayList<CD_F_ProductType> productAndUnitList = new ArrayList<>();
+
+            // Initialize unitList
+            ArrayList<UnitModel> unitList = new ArrayList<>();
+
+            CD_F_ProductType tempModel = new CD_F_ProductType();
+            if (jsonObject.has("units")) {
+                JSONArray unitJSONarray = jsonObject.getJSONArray("units");
+                ArrayList<UnitModel> UnitsModel = new ArrayList<>(); // getting UNITS
+                for (int j = 0; j < unitJSONarray.length(); j++) {
+                    UnitModel tempUnit = new UnitModel();
+                    tempUnit.setName(unitJSONarray.getJSONObject(j).getString("unit_type"));
+                    JSONArray valuesArray = unitJSONarray.getJSONObject(j).getJSONArray("values");
+                    ArrayList<String> values = new ArrayList<>();
+                    for (int k = 0; k < valuesArray.length(); k++) {
+                        values.add(valuesArray.getString(k));
+                    }
+                    tempUnit.setValue(values);
+                    UnitsModel.add(tempUnit);
+                }
+                // Check if UnitsModel is not empty before adding to unitList
+                if (!UnitsModel.isEmpty()) {
+                    unitList.addAll(UnitsModel);
+                    tempModel.setUnits(UnitsModel);
+                }
+            }
+
+            if (jsonObject.has("products")) {
+                JSONArray productSONarray = jsonObject.getJSONArray("products");
+                ArrayList<ProductModel> productData = new ArrayList<>();
+                for (int j = 0; j < productSONarray.length(); j++) {
+                    // Your existing code to populate productData
+                }
+                // Add productData to Products and tempModel if not empty
+                if (!productData.isEmpty()) {
+                    Products.addAll(productData);
+                    SingleCatModel.setProducts(Products);
+                    ProductsCache = SingleCatModel.getProducts();
+                    tempModel.setProducts(productData);
+                    productAndUnitList.add(tempModel);
+                }
+            }
+            cd_productPriceAdapter3.notifyDataSetChanged();
+            prod_horizontalProgressBar.setVisibility(View.GONE);
+
+        } catch (Exception e) {
+            FirebaseCrashlytics.getInstance().recordException(e);
+            System.out.println("ERROR LOG :--> " + e);
+        }
+    }
+
+
+
+    // ADDED BY RW ON 29 JUNE 2022 AT 3:58 PM TO VIEW IMAGE IN BIG
+    private void transition(View view, String order_upload_image) {
+        if (Build.VERSION.SDK_INT <= 14) {
+            Toast.makeText(getActivity(), getResources().getString(R.string.zoom_support), Toast.LENGTH_SHORT).show();
+        } else {
+            Intent intent = new Intent(getActivity(), ActivityTransitionToActivity.class);
+            // ActivityOptionsCompat options = ActivityOptionsCompat.makeSceneTransitionAnimation(getActivity(), view, order_upload_image);
+            intent.putExtra("sharing_url", order_upload_image);
+            Bundle bundle = ActivityOptionsCompat.makeCustomAnimation(getContext(), android.R.anim.fade_in, android.R.anim.fade_out).toBundle();
+            startActivity(intent, bundle);
+
+
+        }
+    }
+
+    @Override
+    public void onResponse(String response) {
+
+    }
+
+//    private String createSearchJson() {
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "FOO_PRODUCT_PRICE_GET_SEARCH");
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "KAR_PRODUCT_PRICE_GET_SEARCH");
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "AGR_PRODUCT_PRICE_GET_SEARCH");
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                jsonObject.put("API", "PHA_PRODUCT_PRICE_GET_SEARCH");
+//            }
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("SEARCH_STRING", searchBar.getText().toString());
+//            jsonObject.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USERNAME", CSShearedPrefence.getUserName());
+//            jsonObject1.put("items", jsonObject);
+//            Log.e("UPDATE PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+////               Log.e("UPDATE PRICE", "json final orbject " + urlString);
+//        } catch (JSONException je) {
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//            //   je.printStackTrace();
+//        }
+//        return urlString;
+//    }
+
+    @Override
+    public void onError(String error) {
+
+    }
+
+    @Override
+    public void onGetResponse(JSONArray jsonArray, int requestCode) {
+
+    }
+
+    public class CD_F_Product_Price_Update_Adapter2 extends
+            RecyclerView.Adapter<CD_F_Product_Price_Update_Adapter2.ViewHolder> {
+
+        ArrayList<CD_F_ProductType> MainproductArray;
+        String a = "set";
+        private LayoutInflater inflater = null;
+        private Context context;
+        private Util util;
+
+        public CD_F_Product_Price_Update_Adapter2(Context context) {
+            this.context = context;
+            inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+
+        }
+
+        private void updateFilterProduct(ArrayList<ProductModel> temp) {
+            Products = temp;
+            notifyDataSetChanged();
+
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = inflater.inflate(R.layout.fragment_s_product_price_screen, parent, false);
+            ViewHolder holder = new ViewHolder(view);
+            return holder;
+
+        }
+
+        @Override
+        public void onBindViewHolder(final ViewHolder holder, final int x) {
+            int position = x;
+
+            //------- DOWNLOADING IMAGE FOR PROMOTION --------//
+
+            Glide.with(context).load(Products.get(position).getProduct_image())
+                    .diskCacheStrategy(DiskCacheStrategy.DATA)
+                    .into(holder.product_id_iv);
+
+            // RW 24TH MAY 2023 AT 11:29 AM   System.out.println("CDVALUEXXXX PRODUCT STATUS :-->" + Products.get(position).getproduct_status());
+
+            // added by RW TO SEE THE IMAGE IN ZOOM 29 JULY 2022 AT 4:05 PM
+            holder.product_id_iv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    transition(v, Products.get(position).getProduct_image());
+                }
+            });
+
+
+            // RW 24TH MAY 2023 AT 11:29 AM    System.out.println("CDVALUES YYYY :--> " + Products.get(position).getproduct_status().length());
+
+         /* rw 24th 2023 at 11:29 am   if (Products.get(position).getproduct_status().length() != 0) {
+                holder.product_status.setText(Products.get(position).getproduct_status());
+                holder.product_status.setVisibility(View.VISIBLE);
+            } else {
+                holder.product_status.setVisibility(View.GONE);
+            }  */
+            holder.product_name_tv.setText(capitalize_address(Products.get(position).getProduct_name()));
+            //   holder.want_to_sell.setText(Products.get(position).getProduct_id());
+
+            // set spinner
+            ArrayAdapter<String> adapter1 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getNameArrayWithoutTild(position));
+            adapter1.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            adapter1.setNotifyOnChange(false);
+            holder.spinner1.setAdapter(adapter1);
+            holder.spinner1.setSelection(Products.get(position).getLastSavedNamePosition());
+            holder.spinner1.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, final int i, long l) {
+                    if (Products.get(position).getLastSavedNamePosition() != i && Products.get(position).getPrice() != null) {
+                        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
+                        alertDialogBuilder.setMessage("If you change unit type previous data will be removed, Are you sure to change unit type");
+                        alertDialogBuilder.setPositiveButton("yes",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface arg0, int arg1) {
+                                        Products.get(position).setLastSavedNamePosition(i);
+                                        Products.get(position).setValues(SingleCatModel.getUnits().get(Products.get(position).getLastSavedNamePosition()).getValue());
+
+                                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+                                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                                        holder.spinner2.setAdapter(adapter2);
+                                        totalSelectedNumber--;                  // DELETE PREVIOUS PRODUCTS
+                                        try {
+                                            if (Products.get(position).getPrice().size() != 0) {
+                                                Products.get(position).setPrice(null);
+                                                Products.get(position).getAdapter().notifyDataSetChanged();
+//                                                adapter.notifyDataSetChanged();
+                                            }
+                                            Products.get(position).setProduct_count(0);
+                                        } catch (NullPointerException e) {
+                                            FirebaseCrashlytics.getInstance().recordException(e);
+                                        }
+                                    }
+                                });
+
+                        alertDialogBuilder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                holder.spinner1.setSelection(Products.get(position).getLastSavedNamePosition());
+                                dialog.dismiss();
+                            }
+                        });
+                        AlertDialog alertDialog = alertDialogBuilder.create();
+                        alertDialog.show();
+                    } else {
+                        Products.get(position).setLastSavedNamePosition(i);
+//                        Products.get(position).setUnit_id(tempValueMain.get(position).get(i));      // store unit id
+                        Products.get(position).setValues(SingleCatModel.getUnits().get(Products.get(position).getLastSavedNamePosition()).getValue());
+
+                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                        holder.spinner2.setAdapter(adapter2);
+                    }
+
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+            ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+            adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            adapter2.setNotifyOnChange(false);
+            holder.spinner2.setAdapter(adapter2);
+            holder.spinner2.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+//                    savedValueSpinnerPosition[position] = i;
+                    Products.get(position).setLastSavedValuePosition(i);
+
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+            // ------- Setting Choose Product By Checkbox -------- //
+            //in some cases, it will prevent unwanted situations
+            holder.select_cb.setOnCheckedChangeListener(null);
+            //if true, your checkbox will be selected, else unselected
+            holder.select_cb.setChecked(Products.get(position).isChecked());
+            if (Products.get(position).isChecked()) {                  // on scroll bottom linear layout
+                holder.bottomLinear.setVisibility(View.VISIBLE);    //  bottom layout visible
+            } else {
+                holder.bottomLinear.setVisibility(View.GONE);
+            }
+            holder.select_cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {  // on check click
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    if (isChecked) {
+                        totalSelectedNumber++;
+                        Log.e("totalSelectedNumber", "XXXXX ---- " + totalSelectedNumber);
+
+                        Products.get(position).setChecked(true);
+                        //                        Log.e("array of ","boolean ---- "+productSelectedBool);
+
+                    } else {
+                        totalSelectedNumber--;
+                        holder.bottomLinear.setVisibility(View.GONE);
+                        Products.get(position).setChecked(false);
+
+                        Products.get(position).setPrice(null);
+                        Products.get(position).setProduct_count(0);
+                        try {
+                            if (Products.get(position).getPrice().size() != 0) {
+                                Products.get(position).setPrice(null);
+                                Products.get(position).getAdapter();
+                                //                                adapter.notifyDataSetChanged();
+                            }
+                        } catch (NullPointerException e) {
+                            FirebaseCrashlytics.getInstance().recordException(e);
+                        }
+                        //                        Log.e("array of ","boolean ---- "+productSelectedBool);
+
+                    }
+
+                }
+            });
+            holder.add_item.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    boolean addOrNot = false;
+                    if (Products.get(position).isChecked()) {
+                        holder.bottomLinear.setVisibility(View.VISIBLE);
+//                        SingleCatModel.getUnits().get(savedNameSpinnerPosition[position]).getValue();
+//                        Products.get(position).setProduct_count(Products.get(position).getProduct_count()+1);
+                        try {
+                            if (Products.get(position).getProduct_count() == 0) {
+                                ArrayList<PriceModel> price = new ArrayList<>(); // price array
+                                PriceModel tempo = new PriceModel();
+                                tempo.setBuy("0");
+                                tempo.setMrp("0");
+                                tempo.setSell("0");
+                                tempo.setCashBack("0");
+                                tempo.setId(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+                                tempo.setPosition(position);
+                                tempo.setType(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[1]);
+                                price.add(tempo);
+                                Products.get(position).setPrice(price);
+                                Products.get(position).setAdapter(new ItemsAdapter(position, Products.get(position).getPrice()));
+//                                adapter = new ItemsAdapter(position, Products.get(position).getPrice());
+                                holder.recycler.setAdapter(Products.get(position).getAdapter());
+                                holder.recycler.setItemViewCacheSize(price.size());
+
+                                Products.get(position).setUnit_id(Products.get(position).getNames().get(Products
+                                        .get(position).getLastSavedNamePosition()));
+                                Products.get(position).setProduct_count(Products.get(position).getProduct_count() + 1);
+
+                            } else if (Products.get(position).getProduct_count() > 0) {
+                                ArrayList<PriceModel> price;
+                                price = Products.get(position).getPrice();
+
+                                Log.e("last save value", "value " + Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()));
+
+                                for (int i = 0; i < price.size(); i++) {                 //check IF ALREADY ADDED
+                                    Log.e("JUNK>>", "ID<>> " + price.get(i).getId());
+                                    Log.e("JUNK >>", "SIZE<>> " + price.size());
+                                    Log.e("JUNK", "TYPE<>> " + price.get(i).getType());
+                                    Log.e("JUNK>", "kay_>>>>" + Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+                                    if (Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0].equals(price.get(i).getId())) {
+
+                                        addOrNot = false;
+                                        break;
+
+                                    } else {
+                                        Log.e("JUNK ELSE>>", "ID<>> " + price.get(i).getId());
+                                        Log.e("JUNK ELSE>", "Lastsave_value_psotion>" + Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+                                        addOrNot = true;
+                                    }
+
+
+                                }
+
+                                if (addOrNot == true) {
+                                    Log.e("phucha", "00000 "); // pop up
+                                    PriceModel tempo = new PriceModel();
+                                    tempo.setBuy("0");
+                                    tempo.setMrp("0");
+                                    tempo.setSell("0");
+                                    tempo.setCashBack("0");
+                                    Log.e("phucha", "1111 "); // pop up
+                                    tempo.setId(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+                                    tempo.setPosition(position);
+
+                                    tempo.setType(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[1]);
+                                    Products.get(position).getPrice().add(tempo);
+
+                                    ///dlete code
+                                    for (int i = 0; i < Products.get(position).getPrice().size(); i++) {
+                                        Log.e("phucha", "2222 " + Products.get(position).getPrice().get(i).getId()); // pop up
+
+                                    }
+//
+//                                    adapter.notifyDataSetChanged();
+                                    Log.e("phucha", "3333 "); // pop up
+
+                                    Products.get(position).setUnit_id(Products.get(position).getNames().get(Products.get(position).getLastSavedNamePosition()));
+                                    Products.get(position).setProduct_count(Products.get(position).getProduct_count() + 1);
+                                    Products.get(position).getAdapter().notifyItemInserted(Products.get(position).getPrice().size());
+
+                                } else
+                                    showCenteredToast(requireActivity(), context.getString(R.string.S_Update_Already_Added));
+
+
+                            }
+                            Log.e("product count ", "after ---- " + Products.get(position).getProduct_count());
+                        } catch (NullPointerException e) {
+                            //   e.printStackTrace();
+                            FirebaseCrashlytics.getInstance().recordException(e);
+
+                        }
+
+                    } else {
+                        holder.bottomLinear.setVisibility(View.GONE);
+
+                        redshowCenteredToast(requireActivity(), getResources().getString(R.string.S_Update_select_product_first));
+                        // showToast(getResources().getString(R.string.S_Update_select_product_first));
+                    }
+
+                }
+            });
+        }
+
+        public ArrayList<String> getArrayWithoutTild(int position) {
+            ArrayList<String> list = new ArrayList<>();
+            for (int i = 0; i < Products.get(position).getValues().size(); i++) {
+                list.add(Products.get(position).getValues().get(i).split("~")[1]);
+            }
+            return list;
+        }
+
+        public ArrayList<String> getNameArrayWithoutTild(int position) {
+            ArrayList<String> list = new ArrayList<>();
+            for (int i = 0; i < Products.get(position).getNames().size(); i++) {
+                list.add(Products.get(position).getNames().get(i).split("~")[1]);
+            }
+            return list;
+        }
+
+        @Override
+        public int getItemCount() {
+            return Products.size();
+        }
+
+        private Double calculateProfit(int i, int position) {
+            Double profit = 0.00;
+            Double cashBack = 0.00;
+            if (Products.get(i).getPrice().get(position) != null) {
+                if (CSStringUtil.isEmptyStr(Products.get(i).getPrice().get(position).getCashBack())) {
+                    cashBack = 0.00;
+                } else {
+                    cashBack = Double.parseDouble(Products.get(i).getPrice().get(position).getCashBack());
+                }
+
+                profit = (parseStringToDouble(String.valueOf(Products.get(i).getPrice().get(position).getSell()), 0.00)
+                        - parseStringToDouble(String.valueOf(Products.get(i).getPrice().get(position).getBuy()), 0.00)
+                        - parseStringToDouble(String.valueOf(Products.get(i).getPrice().get(position).getCashBack()), 0.00));
+
+                System.out.println("PROFIT IS :--> " + profit);
+
+            /*    profit = (Double.parseDouble(Products.get(i).getPrice().get(position).getSell()) -
+                        cashBack -
+                        Double.parseDouble(Products.get(i).getPrice().get(posi        tion).getBuy())); */
+
+            }
+
+            //  return parseStringToDouble(String.valueOf(profit), 0.00);
+            return profit;
+        }
+
+        public class ViewHolder extends RecyclerView.ViewHolder {
+
+            ImageView product_id_iv;
+            TextView product_name_tv, pieceSelect, weightSelect, product_status;
+
+            LinearLayout cat_productLL, bottomLinear, pieceLinear, weightLinear, add_item;
+            Spinner spinner1, spinner2;
+            CheckBox select_cb;
+            RecyclerView recycler;
+
+            public ViewHolder(View view) {
+                super(view);
+                //      product_status = view.findViewById(R.id.product_status);
+                product_id_iv = (ImageView) view.findViewById(R.id.product_image_imageView);
+                product_name_tv = (TextView) view.findViewById(R.id.product_name_textView);
+                add_item = view.findViewById(R.id.add_item);
+
+//            mrp_price_et = (EditText) view.findViewById(R.id.mrp_price_et);
+//            sell_price_et = (EditText) view.findViewById(R.id.sell_price_et);
+
+                bottomLinear = (LinearLayout) view.findViewById(R.id.bottomLinear);
+
+                select_cb = (CheckBox) view.findViewById(R.id.select_cb);
+
+                recycler = (RecyclerView) view.findViewById(R.id.list);
+                spinner1 = (Spinner) view.findViewById(R.id.unitlist);
+                spinner2 = (Spinner) view.findViewById(R.id.unitvalues);
+
+
+                recycler.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+
+            }
+        }
+        //end here
+
+        //start here
+        public class ItemsAdapter extends RecyclerView.Adapter<ItemViewHolder> {
+            int mainpos = 0;
+            private ItemsAdapter(int i, ArrayList<PriceModel> price) {
+                Log.e("second value", "" + i);
+                this.mainpos = i;
+//                this.price = price;
+            }
+
+            @Override
+            public ItemViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+                View itemView = inflater.inflate(R.layout.single_row_category_product_price_screen, parent, false);
+                return new ItemViewHolder(itemView);
+            }
+
+            @Override
+            public void onBindViewHolder(final ItemViewHolder holder, final int x) {
+                int position = x;
+                Log.e("onBindViewHolder>>>", "aaaa" + Products.get(mainpos).getPrice().get(position).getType());
+                holder.qunatityTypeTV.setText(Products.get(mainpos).getPrice().get(position).getType());
+                holder.et_buyPiece.setText(Products.get(mainpos).getPrice().get(position).getBuy());
+                holder.et_mrpPiece.setText(Products.get(mainpos).getPrice().get(position).getMrp());
+                holder.et_sellPiece.setText(Products.get(mainpos).getPrice().get(position).getSell());
+                holder.cashback_ET.setText(Products.get(mainpos).getPrice().get(position).getCashBack());
+//                holder.profitET.setText("" + calculateProfit(mainpos,position));
+
+                //  old one from ankit    holder.profitET.setText("" + new DecimalFormat("##.##").format(calculateProfit(mainpos, position)));
+
+
+                //  holder.profitET.setText(String.valueOf(parseStringToDouble(String.valueOf(calculateProfit(mainpos, position)), 0.00)));
+                holder.profitET.setText("" + formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                holder.et_buyPiece.addTextChangedListener(new TextWatcher() {           // setting BUY values
+                    @Override
+                    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                        Products.get(mainpos).getPrice().get(position)
+                                .setBuy(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+//                    Log.e("Home product position ","" +price.get(position).getPosition());
+//                    Log.e("sub position value","" +position);
+//                    Log.e("sub type value","" +price.get(position).getType());
+//                    Log.e(" value after changed","" +Products.get(price.get(position).getPosition()).getPrice().get(0).getBuy());
+                        if (!CSStringUtil.isEmptyView(holder.et_sellPiece)) {
+                            // RW  14TH MARCH 2022 AT 12:58PM     holder.profitET.setText("" + calculateProfit(mainpos, position));
+                            holder.profitET.setText("" + formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                            //   holder.profitET.setText(String.valueOf(parseStringToDouble(String.valueOf(calculateProfit(mainpos, position)), 0.00)));
+
+
+                        } else {
+                            holder.profitET.setText("0");
+
+                        }
+
+
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable editable) {
+
+
+                    }
+                });
+                holder.et_mrpPiece.addTextChangedListener(new TextWatcher() {               // setting MRP values
+                    @Override
+                    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                        Products.get(mainpos).getPrice().get(position)
+                                .setMrp(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+
+
+                    }
+
+
+                    @Override
+                    public void afterTextChanged(Editable editable) {
+                    }
+                });
+                holder.et_sellPiece.addTextChangedListener(new TextWatcher() {          // setting SELL values
+                    @Override
+                    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                        Products.get(mainpos).getPrice().get(position)
+                                .setSell(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+//                        if (charSequence.toString().isEmpty())
+//                            holder.et_sellPiece.setText("0");
+                        if (!CSStringUtil.isEmptyView(holder.et_buyPiece)) {
+                            // RW 14TH MARCH 2022 at 12:59pm   holder.profitET.setText("" + calculateProfit(mainpos, position));
+                            holder.profitET.setText("" + formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                            //   holder.profitET.setText(String.valueOf(parseStringToDouble(String.valueOf(calculateProfit(mainpos, position)), 0.00)));
+
+                        } else {
+                            holder.profitET.setText("0");
+                        }
+
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable editable) {
+
+                    }
+                });
+                holder.cashback_ET.addTextChangedListener(new TextWatcher() {          // setting SELL values
+                    @Override
+                    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                        Products.get(mainpos).getPrice().get(position)
+                                .setCashBack(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+//                        if (charSequence.toString().isEmpty())
+//                            holder.et_sellPiece.setText("0");
+                        if (!CSStringUtil.isEmptyView(holder.et_sellPiece) && !CSStringUtil.isEmptyView(holder.cashback_ET)) {
+                            holder.profitET.setText("" + formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+
+                            //      holder.profitET.setText(String.valueOf(parseStringToDouble(String.valueOf(calculateProfit(mainpos, position)), 0.00)));
+
+
+                        } else {
+                            holder.profitET.setText("0");
+                        }
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable editable) {
+
+                    }
+                });
+
+                try {
+                } catch (Exception e) {
+                    Log.e("Exception>>>>>>", "" + String.valueOf(e));
+                    FirebaseCrashlytics.getInstance().recordException(e);
+                }
+            }
+
+            @Override
+            public int getItemCount() {
+                int count = 0;
+                try {
+                    if (Products.get(mainpos).getPrice().equals(null))
+                        count = 0;
+                    else
+                        count = Products.get(mainpos).getPrice().size();
+                } catch (NullPointerException e) {
+                    FirebaseCrashlytics.getInstance().recordException(e);
+                }
+                return count;
+            }
+        }
+
+        private class ItemViewHolder extends RecyclerView.ViewHolder {
+
+            private final TextView title, qunatityTypeTV;
+            private final ImageView image;
+            private final EditText et_buyPiece, et_mrpPiece, et_sellPiece, cashback_ET, profitET;
+
+            private ItemViewHolder(View itemView) {
+                super(itemView);
+
+                this.title = (TextView) itemView.findViewById(R.id.title);
+                this.image = (ImageView) itemView.findViewById(R.id.image);
+                this.qunatityTypeTV = (TextView) itemView.findViewById(R.id.qunatityTypeTV);
+                this.et_buyPiece = (EditText) itemView.findViewById(R.id.costPriceET);
+                this.et_mrpPiece = (EditText) itemView.findViewById(R.id.mrp_priceET);
+                this.et_sellPiece = (EditText) itemView.findViewById(R.id.sellPriceET);
+                this.cashback_ET = (EditText) itemView.findViewById(R.id.cashBackET);
+                this.profitET = (EditText) itemView.findViewById(R.id.profitET);
+
+
+                //setting currency
+                et_buyPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                et_mrpPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                et_sellPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                cashback_ET.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+
+                //  profitET.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+
+                //setting 2 decimal format
+                et_buyPiece.addTextChangedListener(new CDDecimalWatcher(et_buyPiece));
+                et_mrpPiece.addTextChangedListener(new CDDecimalWatcher(et_mrpPiece));
+                et_sellPiece.addTextChangedListener(new CDDecimalWatcher(et_sellPiece));
+                cashback_ET.addTextChangedListener(new CDDecimalWatcher(cashback_ET));
+                // profitET.addTextChangedListener(new CDDecimalWatcher(profitET));
+            }
+        }
+    }
+
+
+//    private String createAddSearchJson() {
+//        Log.e("createAddSearchJson>>>", "CAT_ID>>" + getArguments().getInt("CAT_ID"));
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "GET_FOO_DEFAULT_PRODUCTS_SEARCH");
+////                jsonObject.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "GET_KAR_DEFAULT_PRODUCTS_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "GET_AGR_DEFAULT_PRODUCTS_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                //    Log.i(TAG, "onRequestComplete: S_View_And_Update_Product_Screen -x5");
+//                jsonObject.put("API", "GET_PHA_DEFAULT_PRODUCTS_SEARCH");
+//
+//            }
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("SEARCH_STRING", searchBar.getText().toString());
+//            jsonObject.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USERNAME", CSShearedPrefence.getUserName());
+//            jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            jsonObject1.put("items", jsonObject);
+//
+//            Log.e("UPDATE PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+////               Log.e("UPDATE PRICE", "json final orbject " + urlString);
+//
+//        } catch (JSONException je) {
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//            //   je.printStackTrace();
+//        }
+//
+//        return urlString;
+//    }
+
+//    private void getProductSearchWise() {
+//        new Volley_Asynclass(this, getActivity(), createAddSearchJson(), Constants.SELLER_PRODUCT,
+//                false, 1234);
+//    }
+} public class S_Update_Product_Price extends Fragment implements
+        ResponseListener {
+
+    private RecyclerView productListRecycleVW;
+    private LinearLayout update_price_LL_Click;
+    private int mainArrayPos = 0;
+    private TextView cancel_product_tv, checkout_tv;
+    private TextView cd_product_price_productCategory_TV, toolbar_titleTV;
+    private CD_F_Product_Price_Update_Adapter2 cd_productPriceAdapter3;
+    private CD_F_ProductType SingleCatModel;
+    private AppCompatImageView toolbar_backPressIV;
+    private ArrayList<ProductModel> Products;
+    private ArrayList<ProductModel> ProductsCache;
+    private ArrayList<UnitModel> unitList;
+    private AlertDialog alertDialog;
+    private int totalSelectedNumber = 0;
+    private boolean checkInternet = true;
+    private int start = 11, end = 20;
+
+  //  @BindView(R.id.searchBar)
+
+ //  @BindView(R.id.progressBar)
+    ProgressBar progressBar;
+    private Integer checkProductEndWhenScroll = 0; // use to check in scroll product get end or need to scroll
+
+
+    private View fragmentView;
+
+    // new code
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        fragmentView  = inflater.inflate(R.layout.item_product, container, false);
+
+
+
+        toolbar_titleTV.setText(getArguments().getString("CAT_NAME"));
+        toolbar_backPressIV.setOnClickListener(view -> getActivity().onBackPressed());
+        return fragmentView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        setUpMainHeaderView();
+    }
+    // end code
+
+
+
+
+
+    public void setUpMainHeaderView() {
+           if (getArguments() != null) {
+            SingleCatModel = (CD_F_ProductType) getArguments().getParcelable("POSITIION");
+
+
+            setId();
+            //   toolbar_titleTV.setText(getArguments().getString("CAT_NAME")); commited by rahul wali on 06th march 2021
+            Products = new ArrayList<>();
+            Products = SingleCatModel.getProducts();
+            totalSelectedNumber = Products.size();
+
+            for (int i = 0; i < Products.size(); i++) {
+                Products.get(i).setChecked(true);
+                Products.get(i).setProduct_count(Products.get(i).getProduct_count() + 1);
+//            Products.get(i).setValues(SingleCatModel.getUnits().get(0).getValue());          // SETTING VALUES OF FIRST ARRAY
+            }
+
+
+            unitList = new ArrayList();                 //get Units from list
+            unitList = SingleCatModel.getUnits();
+            ArrayList<String> temp = new ArrayList();
+            for (int i = 0; i < SingleCatModel.getUnits().size(); i++) {
+                temp.add(unitList.get(i).getName());
+
+            }
+
+            for (int i = 0; i < Products.size(); i++) {
+                Products.get(i).setNames(temp);
+                for (int j = 0; j < temp.size(); j++) {
+                    if (unitList.get(j).getName().split("~")[0].equals(Products.get(i).getUnit_id())) {
+//                    savedNameSpinnerPosition[i] = j;
+                        Products.get(i).setLastSavedNamePosition(j);
+                        Products.get(i).setLastSavedValuePosition(0);
+                        Products.get(i).setValues(unitList.get(j).getValue());
+
+                    }
+                }
+
+            }
+
+        /*for(int i=0; i<Products.size(); i++){
+            Products.get(i).setLastSavedNamePosition(0);                // store SAVED NAME POSITION
+            Products.get(i).setLastSavedValuePosition(0);               // store SAVED VALUE POSITION
+            Products.get(i).setNames(temp);
+        }*/
+            ProductsCache = Products;
+
+            cd_productPriceAdapter3 = new CD_F_Product_Price_Update_Adapter2(getActivity());
+            productListRecycleVW.setAdapter(cd_productPriceAdapter3);
+         //   productListRecycleVW.setLayoutManager(new WrapContentLinearLayoutManager(getActivity()));
+            productListRecycleVW.setItemViewCacheSize(Products.size());
+
+//            checkout_tv.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    if (validation()) {
+//
+//                        if (checkInternet) {
+//                            Log.i(TAG, "onClick: i am here dude_rahul");
+//
+//                            new WebServiceBodyResponseViaPost(S_Update_Product_Price.this
+//                                    , getActivity(), apiHit()
+//
+//                                    , S_UPDATE_PRODUCTS, getResources().getString(R.string.please_wait)
+//                                    //     , "build/update_products_price/", getResources().getString(R.string.please_wait)
+//                                    , false).execute();
+//                        }
+//
+//                    }
+//
+//                }
+//            });
+
+            //  checkout_tv.setOnClickListener(v -> getActivity().onBackPressed());
+            //  DIDNT ALLOW TO UPDATED. commited by rahul wali on 24 DEC 2020 12:46 PM
+
+        }
+        // toolbar_backPressIV.setOnClickListener(v -> getActivity().onBackPressed());
+    }
+
+
+//    private String apiHit() {
+//        JSONArray jsonArray = new JSONArray();
+//        JSONObject jsonObj = new JSONObject();
+//        JSONObject jsonObj2 = new JSONObject();
+//        String urlString = "";
+//        int foodSubmodule = 2;
+//
+//
+//        try {
+//            JSONObject JsonProducts = new JSONObject();
+//            JSONArray jsonArrayProducts = new JSONArray();
+//            JSONObject jsonProduct = null, jsonObject = null;
+//            for (int i = 0; i < Products.size(); i++) {
+//                if (Products.get(i).isChecked()) {
+//                    Log.e("product update_rahul ", "getname " + Products.get(i).getProduct_name());
+//                    jsonProduct = new JSONObject();
+//                    jsonObject = new JSONObject();
+//                    JSONArray jsonQuantArray = new JSONArray();
+//                    jsonObject.put("PRODUCT_ID", Products.get(i).getProduct_id());
+////                    jsonProduct.put("NAME", Products.get(i).getProduct_name());
+//                    Log.e("product update ", "getname " + Products.get(i).getProduct_name());
+//
+//                    ArrayList<PriceModel> priceModels = new ArrayList<>();
+//                    priceModels = Products.get(i).getPrice();
+//                    for (int j = 0; j < priceModels.size(); j++) {
+//                        Log.e("product update ", "get quant " + priceModels.get(j).getType());
+//                        JSONObject QuantityProduct = new JSONObject();
+//                        QuantityProduct.put("PRODUCT_TYPE", priceModels.get(j).getType());
+//                        QuantityProduct.put("MRP", priceModels.get(j).getMrp());
+//                        QuantityProduct.put("SELL", priceModels.get(j).getSell());
+//                        QuantityProduct.put("BUY", priceModels.get(j).getBuy());
+//                        QuantityProduct.put("ID", priceModels.get(j).getId());
+//                        QuantityProduct.put("CASH_BACK", priceModels.get(j).getCashBack());
+//                        jsonQuantArray.put(QuantityProduct);
+//                        Log.e("PRICE_ARRAY>>>>", "unit id id " + jsonQuantArray.get(j));
+//                    }
+//
+//
+////                    String encPrice = CDEncryption.encryptMyData(jsonQuantArray.toString());
+//                    Log.e("product unit id ", "unit id id " + Products.get(i).getUnit_id());
+//                    Log.e("product unit id ", "unit id id " + Products.get(i).getUnit_name());
+//                    jsonProduct.put("COSTING", jsonQuantArray);
+//                    jsonProduct.put("UNIT_ID", Products.get(i).getUnit_id().split("~")[0]);
+//                    jsonProduct.put("UNIT_NAME", Products.get(i).getUnit_name());       //changed
+//                    String encPrice = AESUtil.encrypt(jsonProduct.toString());
+//                    jsonObject.put("PRICE", encPrice);
+//                    jsonArrayProducts.put(jsonObject);
+//                }
+//
+//            }
+//            if (appPreferences.getGlobalModuleSelected().equals("FOO")) {
+//                JsonProducts.put("API", "FOOD_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equals("KAR")) {
+//
+//                JsonProducts.put("API", "KAR_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", 2);
+//
+//            } else {
+//                JsonProducts.put("API", "AGR_PRODUCT_PRICE_UPDATE");
+//                JsonProducts.put("MODULE", CFUtil.getModuleTypeAGR(CSShearedPrefence.getSubModule()));
+//
+//            }
+//
+//
+//            JsonProducts.put("PRODUCTS", jsonArrayProducts);
+//            JsonProducts.put("USERNAME", CSShearedPrefence.getUserName());
+//            JsonProducts.put("CURD_OPRATION", "I");
+//            JsonProducts.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            JsonProducts.put("CATEGORYID",getArguments().getInt("CAT_ID"));
+//            jsonObj.put("items", JsonProducts);
+//            Log.e("Json product update ", "....111,,.. " + jsonObj.toString());
+//        } catch (JSONException je) {
+//            je.printStackTrace();
+//
+//        }
+//        return jsonObj.toString();
+//    }
+
+    private boolean validation() {
+//        Products
+        if (totalSelectedNumber != 0) {
+
+            for (int i = 0; i < Products.size(); i++) {
+
+                if (Products.get(i).isChecked()) {
+                    Log.e("product update ", "getname " + Products.get(i).getProduct_name());
+                    ArrayList<PriceModel> priceModels = new ArrayList<>();
+                    priceModels = Products.get(i).getPrice();
+                    try {
+                        if (priceModels.size() != 0) {
+
+                            for (int j = 0; j < priceModels.size(); j++) {
+                                if (priceModels.get(j).getBuy().equals("0")) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_enter_buy_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+
+                                    return false;
+                                } else if (priceModels.get(j).getMrp().equals("0")) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_enter_mrp_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+                            return  false;
+                                } else if (priceModels.get(j).getSell().equals("0")) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_enter_sell_price_err) + "(" + priceModels.get(j).getType() + ") of " + Products.get(i).getProduct_name());
+
+                                    return false;
+                                }
+                                // MRP VALIDATION STARTS FROM HERE
+                                // mrp lower than actual cost
+                                else if (parseStringToDouble(priceModels.get(j).getMrp(), 0.00) < parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_mrp_lower_actual_cost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                }
+
+                                // RW 10 DEC 2022 AT 9:42 AM Sell price cannot be greater than MRP PRICE
+
+
+                                else if (parseStringToDouble(priceModels.get(j).getSell(), 0.00) > parseStringToDouble(priceModels.get(j).getMrp(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_sell_price_higher_mrp_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                } // Seller price lowe tham cashback
+// END OF CONDITION
+
+                                // SELL PRICE VALUDATION
+                                //sell price lower than  actual cost (buyprice)
+                                else if (parseStringToDouble(priceModels.get(j).getSell(), 0.00) < parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_sell_price_lower_actualcost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                } // Seller price lowe tham cashback
+
+                                else if (parseStringToDouble(priceModels.get(j).getSell(), 0.00) < parseStringToDouble(priceModels.get(j).getCashBack(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_actualcost_lower_sellprice_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                } else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= (parseStringToDouble(priceModels.get(j).getSell(), 0.00) - parseStringToDouble(priceModels.get(j).getBuy(), 0.00))) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_cashback_greater_minus_sell_minus_acutal_cost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+                                    return false;
+                                }
+
+                                // CASHBACK  VALUDATION
+                                //cashback cannot be greater than actual cost (buyprice)
+                                else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= parseStringToDouble(priceModels.get(j).getSell(), 0.00)) {
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_cahback_greater_actualcost_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+
+
+                                    return false;
+                                } // Cashback canot be greater than sell price
+
+                                else if (parseStringToDouble(priceModels.get(j).getCashBack(), 0.00) >= parseStringToDouble(priceModels.get(j).getBuy(), 0.00)) {
+
+                                    redshowCenteredToast(requireActivity(),getResources().getString(R.string.product_cashback_greater_sell_price_err) + getResources().getString(R.string.product_bracket_start)
+                                            + priceModels.get(j).getType() + getResources().getString(R.string.product_bracket_end) + Products.get(i).getProduct_name());
+
+
+                                    return false;
+                                }
+                            }
+                        } else {
+//                        showCustomDialogupriceModelse("Atleast add one product"+Products.get(i).getProduct_name());
+                        }
+
+                    } catch (NullPointerException e) {
+                        redshowCenteredToast(requireActivity(),getResources().getString(R.string.S_Update_Price_Message));
+                        return false;
+
+                    }
+
+                }
+            }
+
+        } else {
+            redshowCenteredToast(requireActivity(),getResources().getString(R.string.S_Update_Price_Message));
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private void setId() {
+        progressBar = fragmentView.findViewById(R.id.progressBar);
+        productListRecycleVW = (RecyclerView) fragmentView.findViewById(R.id.cd_product_price_recycleVW);
+    //    cd_product_price_productCategory_TV = (TextView) fragmentView.findViewById(R.id.cd_product_price_productCategory_TV);
+   //     cd_product_price_productCategory_TV.setText(SingleCatModel.getCat_name());
+
+    }
+
+//    @Override
+//    public void onRequestComplete(String loadedString) {
+//
+//        if (!loadedString.equals("") && loadedString != null && !loadedString.equals("Exception")) {
+//            Log.e("response", "response.... " + loadedString);
+//
+//            try {
+//                JSONObject jsonObject = new JSONObject(loadedString);
+//                if (jsonObject.has("RESPONSE")) {
+//                    JSONObject jsonObject1 = jsonObject.getJSONObject("RESPONSE");
+//                    if (jsonObject1.getString("RESPONSECODE").equals("0")) {
+//                        CDtoastIconSuccess(jsonObject1.getString("DESCRIPTION"));
+//                        getActivity().onBackPressed();
+//                        //                        startActivity(new Intent(this, S_View_And_Update_Product_Screen.class));
+//                    } else {
+//                        Log.i(TAG, "onRequestComplete: Response2");
+//                        CDtoastIconError(jsonObject1.getString("DESCRIPTION"));
+//                        Log.i(TAG, "onRequestComplete: S_Update_Product_Price");
+//                    }
+//                }
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//
+//    }
+
+
+//    @Override
+//    public void setClickOnListener() {
+//
+//    }
+
+//    private void getProductAPi() {
+//        new Volley_Asynclass(this, getActivity(), formProductsData(), Constants.SELLER_PRODUCT,
+//                false, 1234);
+//    }
+
+//    private String formProductsData() {
+//
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "GET_FOO_SELLER_PRODUCTS");
+////                jsonObject.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//                jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "GET_KAR_SELLER_PRODUCTS");
+//                jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "GET_AGR_SELLER_PRODUCTS");
+//                jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                //    Log.i(TAG, "onRequestComplete: S_View_And_Update_Product_Screen -x5");
+//                jsonObject.put("API", "GET_PHA_SELLER_PRODUCTS");
+//                jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            }
+//
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("START", start);
+//            jsonObject.put("END", end);
+//            jsonObject.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USERNAME", CSShearedPrefence.getUserName());
+//
+//            jsonObject1.put("items", jsonObject);
+//
+//            //  Log.e("UPDATE PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+//            //   Log.e("UPDATE PRICE", "json final orbject " + urlString);
+//
+//        } catch (JSONException je) {
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//            //   je.printStackTrace();
+//        }
+//
+//        return urlString;
+//    }
+
+//    @Override
+//    public void addScrollListener() {
+//        if (checkProductEndWhenScroll == 0) {
+//            start = start + 10;
+//            end = end + 10;
+//         progressBar.setVisibility(View.VISIBLE);
+//            getProductAPi();
+//
+//        } else {
+//            update_price_LL_Click.setVisibility(View.VISIBLE);
+//        }
+//    }
+
+
+    //********************************************************************************************
+
+    public class CD_F_Product_Price_Update_Adapter2 extends
+            RecyclerView.Adapter<CD_F_Product_Price_Update_Adapter2.ViewHolder> {
+
+        private LayoutInflater inflater = null;
+        private Context context;
+        ArrayList<CD_F_ProductType> MainproductArray;
+        private Util util;
+
+        String a = "set";
+
+        private void updateFilterProduct(ArrayList<ProductModel> temp) {
+            Products = temp;
+            notifyDataSetChanged();
+
+        }
+
+        public CD_F_Product_Price_Update_Adapter2(Context context) {
+            this.context = context;
+            inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = inflater.inflate(R.layout.fragment_s_product_price_screen, parent, false);
+            ViewHolder holder = new ViewHolder(view);
+            return holder;
+
+        }
+
+//        @Override
+//        public void onBindViewHolder(final ViewHolder holder, final int position) {
+//
+//            Glide.with(context).load(Products.get(position).getProduct_image())
+//                    .transition(GenericTransitionOptions.with(R.anim.zoom_in))
+//                    .into(holder.product_id_iv);
+//
+//
+//            holder.product_name_tv.setText(capitalize_address(Products.get(position).getProduct_name()));
+//
+//
+//            // set spinner
+//            ArrayAdapter<String> adapter1 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getNameArrayWithoutTild(position));
+//            adapter1.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//            adapter1.setNotifyOnChange(false);
+//            holder.spinner1.setAdapter(adapter1);
+//            holder.spinner1.setSelection(Products.get(position).getLastSavedNamePosition());
+//
+//
+//            holder.spinner1.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+//                @Override
+//                public void onItemSelected(AdapterView<?> adapterView, View view, final int i, long l) {
+//
+//                    if (Products.get(position).getLastSavedNamePosition() != i && Products.get(position).getPrice() != null) {
+//                        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
+//                        alertDialogBuilder.setMessage("If you change unit type previous data will be removed, Are you sure to change unit type");
+//                        alertDialogBuilder.setPositiveButton("yes",
+//                                new DialogInterface.OnClickListener() {
+//                                    @Override
+//                                    public void onClick(DialogInterface arg0, int arg1) {
+//                                        Products.get(position).setLastSavedNamePosition(i);
+//                                        Products.get(position).setValues(SingleCatModel.getUnits().get(Products.get(position).getLastSavedNamePosition()).getValue());
+//
+//                                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+//                                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//                                        holder.spinner2.setAdapter(adapter2);
+//
+//                                        totalSelectedNumber--;                  // DELETE PREVIOUS PRODUCTS
+//                                        try {
+//                                            if (Products.get(position).getPrice().size() != 0) {
+//                                                Products.get(position).setPrice(null);
+//                                                Products.get(position).getAdapter2().notifyDataSetChanged();
+////                                                adapter.notifyDataSetChanged();
+//                                            }
+//                                            Products.get(position).setProduct_count(0);
+//                                        } catch (NullPointerException e) {
+//
+//                                        }
+//                                    }
+//                                });
+//
+//                        alertDialogBuilder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+//                            @Override
+//                            public void onClick(DialogInterface dialog, int which) {
+//                                holder.spinner1.setSelection(Products.get(position).getLastSavedNamePosition());
+//                                dialog.dismiss();
+//                            }
+//                        });
+//                        AlertDialog alertDialog = alertDialogBuilder.create();
+//                        alertDialog.show();
+//                    } else {
+//                        Products.get(position).setLastSavedNamePosition(i);
+////                        Products.get(position).setUnit_id(tempValueMain.get(position).get(i));      // store unit id
+//                        Products.get(position).setValues(SingleCatModel.getUnits().get(Products.get(position).getLastSavedNamePosition()).getValue());
+//
+//                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+//                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//                        holder.spinner2.setAdapter(adapter2);
+//                    }
+//
+//                }
+//
+//                @Override
+//                public void onNothingSelected(AdapterView<?> adapterView) {
+//
+//                }
+//            });
+//
+//
+//            ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(position));
+//            adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//            adapter2.setNotifyOnChange(false);
+//            holder.spinner2.setAdapter(adapter2);
+//
+//            holder.spinner2.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+//
+//                @Override
+//                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+////                    savedValueSpinnerPosition[position] = i;
+//                    Products.get(position).setLastSavedValuePosition(i);
+//
+//                }
+//
+//                @Override
+//                public void onNothingSelected(AdapterView<?> adapterView) {
+//
+//                }
+//            });
+//
+//            // ------- Setting Choose Product By Checkbox -------- //
+//            //in some cases, it will prevent unwanted situations
+//            holder.select_cb.setOnCheckedChangeListener(null);
+//            //if true, your checkbox will be selected, else unselected
+//            holder.select_cb.setChecked(Products.get(position).isChecked());
+//
+//
+//            /*if(Products.get(position).isChecked()){                  // on scroll bottom linear layout
+//                holder.bottomLinear.setVisibility(View.VISIBLE);    //  bottom layout visible
+//            }else{
+//                holder.bottomLinear.setVisibility(View.GONE);
+//            }*/
+//
+//            if (Products.get(position).isChecked()) {                  // on scroll bottom linear layout
+//                holder.bottomLinear.setVisibility(View.VISIBLE);    //  bottom layout visible
+//
+//                Products.get(position).setAdapter2(new ItemsAdapter(getActivity(), position, Products.get(position).getPrice()));
+////                                adapter = new ItemsAdapter(position, Products.get(position).getPrice());
+//                holder.recycler.setAdapter(Products.get(position).getAdapter2());
+//
+//                holder.recycler.setItemViewCacheSize(Products.get(position).getPrice().size());
+//
+//            } else {
+//                holder.bottomLinear.setVisibility(View.GONE);
+//            }
+//
+//            holder.select_cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {  // on check click
+//                @Override
+//                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+//
+//                    if (isChecked) {
+//                        totalSelectedNumber++;
+//                        Log.e("totalSelectedNumber", "XXXXX ---- " + totalSelectedNumber);
+//                        if (totalSelectedNumber > 0) {
+//                        }
+//
+//                        Products.get(position).setChecked(true);
+////                        Log.e("array of ","boolean ---- "+productSelectedBool);
+//
+//                    } else {
+//                        totalSelectedNumber--;
+//                        holder.bottomLinear.setVisibility(View.GONE);
+//                        Products.get(position).setChecked(false);
+//
+//                        Products.get(position).setPrice(null);
+//                        Products.get(position).setProduct_count(0);
+//
+//                        try {
+//                            if (Products.get(position).getPrice().size() != 0) {
+//                                Products.get(position).setPrice(null);
+//                                Products.get(position).getAdapter2();
+////                                adapter.notifyDataSetChanged();
+//                            }
+//                        } catch (NullPointerException e) {
+//
+//                        }
+////                        Log.e("array of ","boolean ---- "+productSelectedBool);
+//
+//                    }
+//
+//                }
+//            });
+//
+//
+//            holder.add_item.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View view) {
+//                    boolean addOrNot = false;
+//                    if (Products.get(position).isChecked()) {
+//                        holder.bottomLinear.setVisibility(View.VISIBLE);
+//
+//                        Log.e("SAVED postion", "spinner 1yo yo ---- " + Products.get(position).getLastSavedNamePosition());
+////                        SingleCatModel.getUnits().get(savedNameSpinnerPosition[position]).getValue();
+////                        Products.get(position).setProduct_count(Products.get(position).getProduct_count()+1);
+//
+//                        Log.e("product name ", "yo yo ---- " + Products.get(position).getProduct_name());
+//
+//                        Log.e("product count ", "befor po ---- " + Products.get(position).getProduct_count());
+//
+//                        try {
+//                            if (Products.get(position).getProduct_count() == 0) {
+//                                ArrayList<PriceModel> price = new ArrayList<>(); // price array
+//                                PriceModel tempo = new PriceModel();
+//                                tempo.setBuy("0");
+//                                tempo.setMrp("0");
+//                                tempo.setSell("0");
+//                                tempo.setCashBack("0");
+//                                tempo.setId(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+//                                tempo.setPosition(position);
+//                                tempo.setType(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[1]);
+//                                price.add(tempo);
+//                                Products.get(position).setPrice(price);
+//                                Products.get(position).setAdapter2(new ItemsAdapter(getActivity(), position, Products.get(position).getPrice()));
+////                                adapter = new ItemsAdapter(position, Products.get(position).getPrice());
+//                                holder.recycler.setAdapter(Products.get(position).getAdapter2());
+//
+//                                holder.recycler.setItemViewCacheSize(price.size());
+//
+//                                Products.get(position).setUnit_id(Products.get(position).getNames().get(Products.get(position).getLastSavedNamePosition()));
+//                                Products.get(position).setProduct_count(Products.get(position).getProduct_count() + 1);
+//
+//                            } else if (Products.get(position).getProduct_count() > 0) {
+//                                ArrayList<PriceModel> price;
+//                                price = Products.get(position).getPrice();
+//
+//                                Log.e("last save value", "value " + Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()));
+//
+//                                for (int i = 0; i < price.size(); i++) {                 //check IF ALREADY ADDED
+//                                    Log.e("price wale ki value", "position " + price.get(i).getId());
+//                                    Log.e("price wale ki value", "position " + price.get(i).getType());
+//                                    if (Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0].equals(price.get(i).getId())) {
+//
+//                                        addOrNot = false;
+//                                        break;
+//                                    } else {
+//                                        addOrNot = true;
+//                                    }
+//
+//                                }
+//
+//                                if (addOrNot == true) {
+//                                    Log.e("phucha", "00000 "); // pop up
+//                                    PriceModel tempo = new PriceModel();
+//                                    tempo.setBuy("0");
+//                                    tempo.setMrp("0");
+//                                    tempo.setSell("0");
+//                                    tempo.setCashBack("0");
+//                                    Log.e("phucha", "1111 "); // pop up
+//                                    tempo.setId(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[0]);
+//                                    tempo.setPosition(position);
+//                                    tempo.setType(Products.get(position).getValues().get(Products.get(position).getLastSavedValuePosition()).split("~")[1]);
+//                                    Products.get(position).getPrice().add(tempo);
+//                                    Log.e("phucha", "2222 "); // pop up
+////
+////                                    adapter.notifyDataSetChanged();
+//                                    Log.e("phucha", "3333 "); // pop up
+//
+//                                    Products.get(position).setUnit_id(Products.get(position).getNames().get(Products.get(position).getLastSavedNamePosition()));
+//                                    Products.get(position).setProduct_count(Products.get(position).getProduct_count() + 1);
+//                                    Products.get(position).getAdapter2().notifyItemInserted(Products.get(position).getPrice().size());
+//
+//                                } else
+//                                    CDtoastIconError(getResources().getString(R.string.S_Update_Already_Added));
+//
+//                            }
+//                            Log.e("product count ", "after ---- " + Products.get(position).getProduct_count());
+//                        } catch (NullPointerException e) {
+//                            Log.e("EXCEPTION>>", "UNCHECKED>>>" + String.valueOf(e));
+//                        }
+//
+//
+//                    } else {
+//                        holder.bottomLinear.setVisibility(View.GONE);
+//                        CDtoastIconError(getResources().getString(R.string.S_Update_select_product_first));
+//                    }
+//
+//                }
+//            });
+//
+//        }
+
+
+        @Override
+        public void onBindViewHolder(final ViewHolder holder, int position) {
+            // Use holder.getAdapterPosition() to get the current position
+          //  int currentPosition = holder.getAdapterPosition();
+            int currentPosition = holder.getBindingAdapterPosition();
+
+            // ------- DOWNLOADING IMAGE FOR PROMOTION --------//
+
+            Glide.with(context).load(Products.get(currentPosition).getProduct_image())
+                    .transition(GenericTransitionOptions.with(R.anim.zoom_in))
+                    .into(holder.product_id_iv);
+
+            holder.product_name_tv.setText(capitalize_address(Products.get(currentPosition).getProduct_name()));
+
+            // set spinner
+            ArrayAdapter<String> adapter1 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getNameArrayWithoutTild(currentPosition));
+            adapter1.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            adapter1.setNotifyOnChange(false);
+            holder.spinner1.setAdapter(adapter1);
+            holder.spinner1.setSelection(Products.get(currentPosition).getLastSavedNamePosition());
+
+            holder.spinner1.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, final int i, long l) {
+                    if (Products.get(currentPosition).getLastSavedNamePosition() != i && Products.get(currentPosition).getPrice() != null) {
+                        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
+                        alertDialogBuilder.setMessage("If you change unit type previous data will be removed, Are you sure to change unit type");
+                        alertDialogBuilder.setPositiveButton("yes",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface arg0, int arg1) {
+                                        Products.get(currentPosition).setLastSavedNamePosition(i);
+                                        Products.get(currentPosition).setValues(SingleCatModel.getUnits().get(Products.get(currentPosition).getLastSavedNamePosition()).getValue());
+
+                                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(currentPosition));
+                                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                                        holder.spinner2.setAdapter(adapter2);
+
+                                        totalSelectedNumber--;
+
+                                        try {
+                                            if (Products.get(currentPosition).getPrice().size() != 0) {
+                                                Products.get(currentPosition).setPrice(null);
+                                                Products.get(currentPosition).getAdapter2().notifyDataSetChanged();
+                                            }
+                                            Products.get(currentPosition).setProduct_count(0);
+                                        } catch (NullPointerException e) {
+                                            // Handle the exception
+                                        }
+                                    }
+                                });
+
+                        alertDialogBuilder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                holder.spinner1.setSelection(Products.get(currentPosition).getLastSavedNamePosition());
+                                dialog.dismiss();
+                            }
+                        });
+                        AlertDialog alertDialog = alertDialogBuilder.create();
+                        alertDialog.show();
+                    } else {
+                        Products.get(currentPosition).setLastSavedNamePosition(i);
+                        Products.get(currentPosition).setValues(SingleCatModel.getUnits().get(Products.get(currentPosition).getLastSavedNamePosition()).getValue());
+
+                        ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(currentPosition));
+                        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                        holder.spinner2.setAdapter(adapter2);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+
+            ArrayAdapter<String> adapter2 = new ArrayAdapter<String>(context, R.layout.spinner_single_row, getArrayWithoutTild(currentPosition));
+            adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            adapter2.setNotifyOnChange(false);
+            holder.spinner2.setAdapter(adapter2);
+
+            holder.spinner2.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    Products.get(currentPosition).setLastSavedValuePosition(i);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+
+            // ------- Setting Choose Product By Checkbox -------- //
+
+            holder.select_cb.setOnCheckedChangeListener(null);
+            holder.select_cb.setChecked(Products.get(currentPosition).isChecked());
+
+            holder.select_cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    if (isChecked) {
+                        totalSelectedNumber++;
+                        Log.e("totalSelectedNumber", "XXXXX ---- " + totalSelectedNumber);
+                        if (totalSelectedNumber > 0) {
+                        }
+
+                        Products.get(currentPosition).setChecked(true);
+                        // ...
+                    } else {
+                        totalSelectedNumber--;
+                        holder.bottomLinear.setVisibility(View.GONE);
+                        Products.get(currentPosition).setChecked(false);
+
+                        Products.get(currentPosition).setPrice(null);
+                        Products.get(currentPosition).setProduct_count(0);
+
+                        try {
+                            if (Products.get(currentPosition).getPrice().size() != 0) {
+                                Products.get(currentPosition).setPrice(null);
+                                Products.get(currentPosition).getAdapter2().notifyDataSetChanged();
+                            }
+                        } catch (NullPointerException e) {
+                            // Handle the exception
+                        }
+                        // ...
+                    }
+                }
+            });
+
+            holder.add_item.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    boolean addOrNot = false;
+                    if (Products.get(currentPosition).isChecked()) {
+                        holder.bottomLinear.setVisibility(View.VISIBLE);
+                        // ...
+                        // Update the rest of your code using 'currentPosition'
+                        // ...
+                    } else {
+                        holder.bottomLinear.setVisibility(View.GONE);
+                        redshowCenteredToast(requireActivity(),getResources().getString(R.string.S_Update_select_product_first));
+                    }
+                }
+            });
+        }
+
+
+
+        public ArrayList<String> getArrayWithoutTild(int position) {
+
+            ArrayList<String> list = new ArrayList<>();
+            for (int i = 0; i < Products.get(position).getValues().size(); i++) {
+
+                list.add(Products.get(position).getValues().get(i).split("~")[1]);
+            }
+            return list;
+        }
+
+        public ArrayList<String> getNameArrayWithoutTild(int position) {
+
+            ArrayList<String> list = new ArrayList<>();
+            for (int i = 0; i < Products.get(position).getNames().size(); i++) {
+                list.add(Products.get(position).getNames().get(i).split("~")[1]);
+            }
+            return list;
+        }
+
+        @Override
+        public int getItemCount() {
+            return Products.size();
+        }
+
+        public class ViewHolder extends RecyclerView.ViewHolder {
+
+            ImageView product_id_iv;
+            TextView product_name_tv;
+            LinearLayout cat_productLL, bottomLinear, add_item;
+            Spinner spinner1, spinner2;
+            CheckBox select_cb;
+            RecyclerView recycler;
+
+            public ViewHolder(View view) {
+                super(view);
+
+                product_id_iv = (ImageView) view.findViewById(R.id.product_image_imageView);
+                product_name_tv = (TextView) view.findViewById(R.id.product_name_textView);
+
+
+
+
+                add_item = view.findViewById(R.id.add_item);
+
+
+
+//            mrp_price_et = (EditText) view.findViewById(R.id.mrp_price_et);
+//            sell_price_et = (EditText) view.findViewById(R.id.sell_price_et);
+
+                bottomLinear = (LinearLayout) view.findViewById(R.id.bottomLinear);
+
+
+                select_cb = (CheckBox) view.findViewById(R.id.select_cb);
+                recycler = (RecyclerView) view.findViewById(R.id.list);
+                spinner1 = (Spinner) view.findViewById(R.id.unitlist);
+                spinner2 = (Spinner) view.findViewById(R.id.unitvalues);
+
+                recycler.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+
+            }
+        }
+
+
+        public class ItemsAdapter extends RecyclerView.Adapter<ItemViewHolder> {
+            int mainpos = 0;
+            String name = "";
+            Context context;
+//            ArrayList<PriceModel> price;
+
+            private ItemsAdapter(Context context, int i, ArrayList<PriceModel> price) {
+                Log.e("second value", "" + i);
+                this.mainpos = i;
+                this.context = context;
+//                this.price = price;
+            }
+
+            @Override
+            public ItemViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+                View itemView = inflater.inflate(R.layout.single_row_category_product_price_screen, parent, false);
+                return new ItemViewHolder(itemView);
+            }
+
+            @Override
+            public void onBindViewHolder(final ItemViewHolder holder, final int cposition) {
+                int position = holder.getBindingAdapterPosition();
+                try {
+                    holder.qunatityTypeTV.setText(Products.get(mainpos).getPrice().get(position).getType());
+                    //  holder.et_buyPiece.setText(formatCurrency(String.valueOf(Products.get(mainpos).getPrice().get(position).getBuy())));
+                    holder.et_buyPiece.setText(Products.get(mainpos).getPrice().get(position).getBuy());
+                    holder.et_mrpPiece.setText(Products.get(mainpos).getPrice().get(position).getMrp());
+                    holder.et_sellPiece.setText(Products.get(mainpos).getPrice().get(position).getSell());
+                    holder.cashback_ET.setText(Products.get(mainpos).getPrice().get(position).getCashBack());
+//                    holder.profitET.setText("" + calculateProfit(mainpos,position));
+                    // holder.profitET.setText("" + new DecimalFormat("##.##").format(calculateProfit(mainpos,position)));
+                    holder.profitET.setText(formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+
+
+                    holder.et_buyPiece.addTextChangedListener(new TextWatcher() {           // setting BUY values
+                        @Override
+                        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                        }
+
+                        @Override
+                        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                            if (charSequence.toString() != null) {
+
+
+                                Products.get(mainpos).getPrice().get(position).setBuy(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+
+                            }
+
+                            if (!CSStringUtil.isEmptyView(holder.et_sellPiece)) {
+                                //   holder.profitET.setText("" + calculateProfit(mainpos, position));
+
+                            } else {
+                                holder.profitET.setText("0");
+                            }
+
+
+
+                    /*Log.e("Home product position ","" +price.get(position).getPosition());
+                    Log.e("sub position value","" +position);
+                    Log.e("sub type value","" +price.get(position).getType());
+                    Log.e(" value after changed","" +Products.get(price.get(position).getPosition()).getPrice().get(0).getBuy());*/
+
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable editable) {
+                            Log.e("afterTextChanged>>>", "" + editable.toString());
+                        }
+                    });
+                    holder.cashback_ET.addTextChangedListener(new TextWatcher() {          // setting SELL values
+                        @Override
+                        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                        }
+
+                        @Override
+                        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                            Products.get(mainpos).getPrice().get(position)
+                                    .setCashBack(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+                            if (charSequence.toString() != null) {
+//                            holder.et_sellPiece.setText("0");
+                                if (!CSStringUtil.isEmptyView(holder.et_sellPiece) && !CSStringUtil.isEmptyView(holder.et_mrpPiece)) {
+                                    //    holder.profitET.setText("" + calculateProfit(mainpos, position));
+                                    holder.profitET.setText(formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                                }
+
+                            } else {
+                                holder.profitET.setText("0");
+                            }
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable editable) {
+
+                        }
+                    });
+
+                    holder.et_mrpPiece.addTextChangedListener(new TextWatcher() {               // setting MRP values
+                        @Override
+                        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                        }
+
+                        @Override
+                        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                            if (charSequence.toString() != null) {
+                                Products.get(mainpos).getPrice().get(position)
+                                        .setMrp(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+                                if (!CSStringUtil.isEmptyView(holder.cashback_ET) && !CSStringUtil.isEmptyView(holder.et_sellPiece)) {
+                                    //  holder.profitET.setText("" + calculateProfit(mainpos, position));
+                                    holder.profitET.setText(formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                                }
+
+                            } else {
+                                holder.profitET.setText("0");
+                            }
+
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable editable) {
+                            Log.e("afterTextChanged>>>", "" + editable.toString());
+                        }
+                    });
+
+                    holder.et_sellPiece.addTextChangedListener(new TextWatcher() {          // setting SELL values
+                        @Override
+                        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                        }
+
+                        @Override
+                        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                            if (charSequence.toString() != null) {
+                                Products.get(mainpos).getPrice().get(position)
+                                        .setSell(charSequence.toString().isEmpty() ? "0" : charSequence.toString());
+                                if (!CSStringUtil.isEmptyView(holder.cashback_ET) && !CSStringUtil.isEmptyView(holder.et_mrpPiece)) {
+                                    holder.profitET.setText(formatCurrency(String.valueOf(calculateProfit(mainpos, position))));
+                                }
+                            } else {
+                                holder.profitET.setText("0");
+                            }
+
+//                        if (charSequence.toString().isEmpty())
+//                            holder.et_sellPiece.setText("0");
+
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable editable) {
+                            Log.e("afterTextChanged>>>", "" + editable.toString());
+
+
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e("Exception>>>>>>", "" + String.valueOf(e));
+                }
+
+            }
+
+            @Override
+            public int getItemCount() {
+                int count = 0;
+                try {
+                    if (Products.get(mainpos).getPrice().equals(null))
+                        count = 0;
+                    else
+                        count = Products.get(mainpos).getPrice().size();
+                } catch (NullPointerException e) {
+
+                }
+                return count;
+            }
+
+
+        }
+
+        private class ItemViewHolder extends RecyclerView.ViewHolder {
+
+            private final TextView title, qunatityTypeTV;
+            private final ImageView image;
+            private final EditText et_buyPiece, et_mrpPiece, et_sellPiece, cashback_ET, profitET;
+
+            private ItemViewHolder(View itemView) {
+                super(itemView);
+              /*  this.title = (TextView) itemView.findViewById(R.id.title);
+                this.image = (ImageView) itemView.findViewById(R.id.image);
+                this.qunatityTypeTV = (TextView) itemView.findViewById(R.id.qunatityTypeTV);
+                this.et_buyPiece = (EditText) itemView.findViewById(R.id.costPriceET);
+                this.et_mrpPiece = (EditText) itemView.findViewById(R.id.mrp_priceET);
+                this.et_sellPiece = (EditText) itemView.findViewById(R.id.sellPriceET);
+                this.cashback_ET = (EditText) itemView.findViewById(R.id.cashBackET);
+                this.profitET = (EditText) itemView.findViewById(R.id.profitET); */
+
+
+                title = itemView.findViewById(R.id.title);
+                image = itemView.findViewById(R.id.image);
+                qunatityTypeTV = itemView.findViewById(R.id.qunatityTypeTV);
+                et_buyPiece = itemView.findViewById(R.id.costPriceET);
+                et_mrpPiece = itemView.findViewById(R.id.mrp_priceET);
+                et_sellPiece = itemView.findViewById(R.id.sellPriceET);
+                cashback_ET = itemView.findViewById(R.id.cashBackET);
+                profitET = itemView.findViewById(R.id.profitET);
+                //  fastDeliveryAmtET.addTextChangedListener(new CDDecimalWatcher(fastDeliveryAmtET));
+
+                et_buyPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                et_mrpPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                et_sellPiece.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+                cashback_ET.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_current_currency, 0, 0, 0);
+
+
+                et_buyPiece.addTextChangedListener(new CDDecimalWatcher(et_buyPiece));
+                et_mrpPiece.addTextChangedListener(new CDDecimalWatcher(et_mrpPiece));
+                et_sellPiece.addTextChangedListener(new CDDecimalWatcher(et_sellPiece));
+                cashback_ET.addTextChangedListener(new CDDecimalWatcher(cashback_ET));
+
+
+                hideSoftKeyboard(et_buyPiece);
+                hideSoftKeyboard(et_sellPiece);
+                hideSoftKeyboard(et_mrpPiece);
+                hideSoftKeyboard(cashback_ET);
+            }
+        }
+
+    }
+
+    private Double calculateProfit(int mainpos, int position) {
+        Double profit = 0.0;
+        Double cashBack = 0.0;
+        if (CSStringUtil.isEmptyStr(Products.get(mainpos).getPrice().get(position).getCashBack())) {
+            cashBack = 0.0;
+        } else {
+            cashBack = Double.parseDouble(Products.get(mainpos).getPrice().get(position).getCashBack());
+        }
+
+        profit = (parseStringToDouble(String.valueOf(Products.get(mainpos).getPrice().get(position).getSell()), 0.00)
+                - parseStringToDouble(String.valueOf(Products.get(mainpos).getPrice().get(position).getBuy()), 0.00)
+                - parseStringToDouble(String.valueOf(Products.get(mainpos).getPrice().get(position).getCashBack()), 0.00));
+
+
+      /* RW AS ON 12 JAN 2022 AT 11:36 PM   profit = (Double.parseDouble(Products.get(mainpos).getPrice().get(position).getSell()) -
+                cashBack -
+                Double.parseDouble(Products.get(mainpos).getPrice().get(position).getBuy())); */
+
+        return profit;
+    }
+
+    public void hideSoftKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+        }
+    }
+
+//    @Override
+//    public void onNetworkConnectionChanged(boolean isConnected) {
+//        checkInternet = isConnected;
+//        if (checkInternet) {
+//            if (alertDialog != null) {
+//                alertDialog.dismiss();
+//            }
+//        } else {
+//            // 30 AUG 2023 AT 10:17 AM    alertDialog = CSDialogUtil.showInfoDialogNoInternet(CSApplicationHelper.application().getActivity(), 0000);
+//
+//        }
+//
+//    }
+
+//    @Override
+//    public void onGetResponse(String loadedString, int requestCode) {
+//        try {
+//            if (requestCode == 1234) { // first time GET
+//                try {
+//
+//                    JSONObject jsonObject1, jsonObject2;
+//                    jsonObject1 = new JSONObject(CDEncryption.decryptDataByLine(loadedString));
+//                    show_Log_Data("SEARCH_DATA111>>>", jsonObject1.toString());
+//                    ArrayList<CD_F_ProductType> productAndUnitList = new ArrayList<>();
+//                    jsonObject2 = jsonObject1.getJSONObject("RESPONSE");
+//                    if (jsonObject2.getString("RESPONSECODE").equals("0")) {
+//                        CD_F_ProductType tempModel;
+//                        JSONArray unitJSONarray = jsonObject2.getJSONArray("UNITS");
+//                        tempModel = new CD_F_ProductType();
+//                        ArrayList<UnitModel> UnitsModel = new ArrayList<>();                 // getting UNITS
+//                        for (int j = 0; j < unitJSONarray.length(); j++) {
+//                            UnitModel tempUnit = new UnitModel();
+//                            tempUnit.setName(unitJSONarray.getJSONObject(j).getString("NAME"));
+//
+//                            JSONArray valuesArray = unitJSONarray.getJSONObject(j).getJSONArray("VALUES");
+//                            ArrayList<String> values = new ArrayList<>();
+//                            for (int k = 0; k < valuesArray.length(); k++) {
+//                                values.add(valuesArray.getString(k));
+//                            }
+//                            tempUnit.setValue(values);
+//                            UnitsModel.add(tempUnit);
+////                        unitList.add(tempUnit);
+//
+//
+//                        }
+//                        tempModel.setUnits(UnitsModel);
+//                        if (jsonObject2.has("PRODUCTS")) {
+//                            JSONArray productSONarray = jsonObject2.getJSONArray("PRODUCTS");
+//                            ArrayList<ProductModel> productData = new ArrayList<>();
+//                            for (int j = 0; j < productSONarray.length(); j++) {             // getting PRODUCT
+//                                ProductModel productType = new ProductModel();
+//                                Log.e("loop ", "" + productSONarray.getJSONObject(j).getString("NAME"));
+//
+//                                productType.setProduct_id(productSONarray.getJSONObject(j).getString("ID"));
+//                                productType.setProduct_name(productSONarray.getJSONObject(j).getString("NAME"));
+//                                productType.setProduct_image(productSONarray.getJSONObject(j).getString("IMAGE"));
+//                                productType.setChecked(false);
+//                                productType.setLastSavedNamePosition(0);                // store SAVED NAME POSITION
+//                                productType.setLastSavedValuePosition(0);
+//                                productType.setValues(unitList.get(0).getValue());
+//                                ArrayList<String> temp = new ArrayList<>();
+//                                for (UnitModel aaa : tempModel.getUnits()) {
+//                                    temp.add(aaa.getName());
+//                                }
+//                                productType.setNames(temp);
+//                                /*String c[] = {"0","0","0"};
+//                                productType.setA(c);
+//                                productType.setB(c);
+//                                productType.setC(c);
+//                                productType.setD(c);
+//                                productType.setPiece(c);*//*
+//
+//                                 *//*productType.setProduct_Buy("0");
+//                            productType.setProduct_MRP("0");
+//                            productType.setProduct_Sell_Price("0");*//*
+//
+//                                     productData.add(productType);
+//                                    }
+//                                    tempModel.setProducts(productData);
+//                                    MainproductArray.add(tempModel);
+//*/
+//                                productData.add(productType);
+//
+//                            }
+//                            Products.addAll(productData);
+//                            SingleCatModel.setProducts(Products);
+//
+//                            tempModel.setProducts(productData);
+//                            productAndUnitList.add(tempModel);
+//
+//                            //  show_Log_Data("productAndUnitList" + "productData" + productData.size());
+//                        }
+//
+//
+//
+//                    /*if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//
+//                    } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                    }else {
+//                        show_Log_Data("productAndUnitList" + productAndUnitList.size());
+//                        Bundle bundle = new Bundle();
+//                        bundle.putParcelable("POSITIION", tempModel);
+//                        bundle.putString("CAT_NAME", MainproductArray.get(selectCategoriesPosition).getCat_name());
+//                        S_Add_New_Price_ProductFinal temp = new S_Add_New_Price_ProductFinal();
+//                        temp.setArguments(bundle);
+//                        CSAppUtil.openAddFragmentNoAnim(temp);
+//                    }*/
+//                        //    show_Log_Data("productAndUnitList" + productAndUnitList.size());
+//                        cd_productPriceAdapter3.notifyDataSetChanged();
+//                  //      ll_status.setVisibility(View.GONE);
+//                        update_price_LL_Click.setVisibility(View.VISIBLE);
+//                    } else {
+//                     progressBar.setVisibility(View.GONE);
+//                        checkProductEndWhenScroll = 1;
+//                      //  ll_status.setVisibility(View.VISIBLE);
+//                        update_price_LL_Click.setVisibility(View.VISIBLE);
+//                     //  CDtoastIconNotFound(jsonObject2.getString("DESCRIPTION"));
+//                        showCenteredToast(requireActivity(),jsonObject2.getString("DESCRIPTION"));
+//
+//
+//
+//                    }
+//
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            } else {
+//                show_Log_Data("VIEW_PRODUCT_GE1111T", loadedString);
+//
+//            }
+//
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//
+//
+//    }
+
+    @Override
+    public void onFail() {
+
+    }
+
+    @Override
+    public void onFail(String message) {
+
+    }
+
+//    private String createSearchJson() {
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "FOO_PRODUCT_PRICE_GET_SEARCH");
+////                jsonObject.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "KAR_PRODUCT_PRICE_GET_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "AGR_PRODUCT_PRICE_GET_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                //    Log.i(TAG, "onRequestComplete: S_View_And_Update_Product_Screen -x5");
+//                jsonObject.put("API", "PHA_PRODUCT_PRICE_GET_SEARCH");
+//
+//            }
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("SEARCH_STRING", searchBar.getText().toString());
+//            jsonObject.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USERNAME", CSShearedPrefence.getUserName());
+//
+//            jsonObject1.put("items", jsonObject);
+//
+//            Log.e("UPDATE PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+////               Log.e("UPDATE PRICE", "json final orbject " + urlString);
+//
+//        } catch (JSONException je) {
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//            //   je.printStackTrace();
+//        }
+//
+//        return urlString;
+//    }
+//    private String createAddSearchJson() {
+//        Log.e("createAddSearchJson>>>","CAT_ID>>"+getArguments().getInt("CAT_ID"));
+//        JSONObject jsonObject = new JSONObject();
+//        JSONObject jsonObject1 = new JSONObject();
+//        String urlString = "";
+//
+//        try {
+//            if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("FOO")) {
+//                jsonObject.put("API", "GET_FOO_DEFAULT_PRODUCTS_SEARCH");
+////                jsonObject.put("MODULE", CFUtil.getModuleTypeFood(CSShearedPrefence.getSubModule()));
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+//                jsonObject.put("API", "GET_KAR_DEFAULT_PRODUCTS_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("AGR")) {
+//                jsonObject.put("API", "GET_AGR_DEFAULT_PRODUCTS_SEARCH");
+//
+//            } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+//                //    Log.i(TAG, "onRequestComplete: S_View_And_Update_Product_Screen -x5");
+//                jsonObject.put("API", "GET_PHA_DEFAULT_PRODUCTS_SEARCH");
+//
+//            }
+//            jsonObject.put("CURD_OPERATION", "G");
+//            jsonObject.put("SEARCH_STRING", searchBar.getText().toString());
+//            jsonObject.put("LANGUAGE", CSShearedPrefence.getLanguage());
+//            jsonObject.put("USERNAME", CSShearedPrefence.getUserName());
+//            jsonObject.put("MODULE", getArguments().getInt("CAT_ID"));
+//
+//            jsonObject1.put("items", jsonObject);
+//
+//            Log.e("UPDATE PRICE", "json final orbject " + jsonObject1.toString());
+//            urlString = CDEncryption.encryptMyData(jsonObject1.toString());
+////               Log.e("UPDATE PRICE", "json final orbject " + urlString);
+//
+//        } catch (JSONException je) {
+//            FirebaseCrashlytics.getInstance().recordException(je);
+//            //   je.printStackTrace();
+//        }
+//
+//        return urlString;
+//    }
+
+    @Override
+    public void onResponse(String response) {
+
+    }
+
+    @Override
+    public void onError(String error) {
+
+    }
+
+    @Override
+    public void onGetResponse(JSONArray jsonArray, int requestCode) {
+
+    }
+
+    @Override
+    public void onGetResponse(JSONObject jsonObject, int requestCode) {
+        if (requestCode == 12345) { // first time GET
+            try {
+
+                JSONObject jsonObject1, jsonObject2;
+                jsonObject1 = jsonObject;
+
+                ArrayList<CD_F_ProductType> productAndUnitList = new ArrayList<>();
+                jsonObject2 = jsonObject1.getJSONObject("RESPONSE");
+                if (jsonObject2.getString("RESPONSECODE").equals("0")) {
+                    ArrayList<ProductModel> searchProductList = new ArrayList<>();
+                    CD_F_ProductType tempModel;
+                    JSONArray categoryArray = jsonObject2.getJSONArray("CATEGORY");
+
+                    if (categoryArray.length() > 0) {
+                        JSONArray unitJSONarray = categoryArray.getJSONObject(0).getJSONArray("UNITS");
+
+//                    JSONArray unitJSONarray = jsonObject2.getJSONArray("UNITS");
+                        tempModel = new CD_F_ProductType();
+                        ArrayList<UnitModel> UnitsModel = new ArrayList<>();                 // getting UNITS
+                        for (int j = 0; j < unitJSONarray.length(); j++) {
+                            UnitModel tempUnit = new UnitModel();
+                            tempUnit.setName(unitJSONarray.getJSONObject(j).getString("NAME"));
+
+                            JSONArray valuesArray = unitJSONarray.getJSONObject(j).getJSONArray("VALUES");
+                            ArrayList<String> values = new ArrayList<>();
+                            for (int k = 0; k < valuesArray.length(); k++) {
+                                values.add(valuesArray.getString(k));
+                            }
+                            tempUnit.setValue(values);
+                            UnitsModel.add(tempUnit);
+//                        unitList.add(tempUnit);
+
+
+                        }
+                        tempModel.setUnits(UnitsModel);
+                        if (categoryArray.getJSONObject(0).has("PRODUCTS")) {
+                            JSONArray productSONarray = categoryArray.getJSONObject(0).getJSONArray("PRODUCTS");
+//                            JSONArray productSONarray = jsonObject2.getJSONArray("PRODUCTS");
+                            ArrayList<ProductModel> productData = new ArrayList<>();
+                            for (int j = 0; j < productSONarray.length(); j++) {             // getting PRODUCT
+                                ProductModel productType = new ProductModel();
+                                Log.e("loop ", "" + productSONarray.getJSONObject(j).getString("NAME"));
+
+                                productType.setProduct_id(productSONarray.getJSONObject(j).getString("ID"));
+                                productType.setProduct_name(productSONarray.getJSONObject(j).getString("NAME"));
+                                productType.setProduct_image(productSONarray.getJSONObject(j).getString("IMAGE"));
+                                productType.setChecked(false);
+                                productType.setLastSavedNamePosition(0);                // store SAVED NAME POSITION
+                                productType.setLastSavedValuePosition(0);
+                                productType.setValues(unitList.get(0).getValue());
+                                ArrayList<String> temp = new ArrayList<>();
+                                for (UnitModel aaa : tempModel.getUnits()) {
+                                    temp.add(aaa.getName());
+                                }
+                                productType.setNames(temp);
+                                /*String c[] = {"0","0","0"};
+                                productType.setA(c);
+                                productType.setB(c);
+                                productType.setC(c);
+                                productType.setD(c);
+                                productType.setPiece(c);*//*
+
+                                 *//*productType.setProduct_Buy("0");
+                            productType.setProduct_MRP("0");
+                            productType.setProduct_Sell_Price("0");*//*
+
+                                     productData.add(productType);
+                                    }
+                                    tempModel.setProducts(productData);
+                                    MainproductArray.add(tempModel);
+*/
+                                productData.add(productType);
+
+                            }
+                            Products = productData;
+//                            searchProductList.addAll(productData);
+                            SingleCatModel.setProducts(productData);
+
+                            tempModel.setProducts(productData);
+                            productAndUnitList.add(tempModel);
+                            cd_productPriceAdapter3.updateFilterProduct(productData);
+//                            show_Log_Data("productAndUnitList" + "productData" + productData.size());
+//                            show_Log_Data("productAndUnitList" + "Products" + Products.size());
+                        }
+
+
+
+                    /*if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("KAR")) {
+
+                    } else if (CFUtil.getSellerModuleType(CSShearedPrefence.getModule()).equalsIgnoreCase("PHA")) {
+                    }else {
+                        show_Log_Data("productAndUnitList" + productAndUnitList.size());
+                        Bundle bundle = new Bundle();
+                        bundle.putParcelable("POSITIION", tempModel);
+                        bundle.putString("CAT_NAME", MainproductArray.get(selectCategoriesPosition).getCat_name());
+                        S_Add_New_Price_ProductFinal temp = new S_Add_New_Price_ProductFinal();
+                        temp.setArguments(bundle);
+                        CSAppUtil.openAddFragmentNoAnim(temp);
+                    }*/
+                        //    show_Log_Data("productAndUnitList" + productAndUnitList.size());
+
+                    }
+                //    ll_status.setVisibility(View.GONE);
+                    update_price_LL_Click.setVisibility(View.VISIBLE);
+                } else {
+                //    ll_status.setVisibility(View.VISIBLE);
+                    update_price_LL_Click.setVisibility(View.GONE);
+                progressBar.setVisibility(View.GONE);
+                    checkProductEndWhenScroll = 1;
+                    showCenteredToast(requireActivity(),jsonObject2.getString("DESCRIPTION"));
+
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        }
+
+    @Override
+    public void onGetResponse(String description, int requestCode) throws JSONException {
+
+    }
+
+
+//    private void getProductSearchWise() {
+//        show_Log_Data("SCREEN_TAG>>>",getArguments().getString("SCREEN_TAG"));
+//        try {
+//            if (getArguments().getString("SCREEN_TAG") != null) {
+//                if (getArguments().getString("SCREEN_TAG").equalsIgnoreCase("ADD_PRODUCTS")) {
+//                    new Volley_Asynclass(this, getActivity(), createAddSearchJson(), Constants.SELLER_PRODUCT,
+//                            false, 1234);
+//                } else {
+//                    new Volley_Asynclass(this, getActivity(), createSearchJson(), Constants.GET_SELLER_WISE_PRODUCT,
+//                            true, 12345);
+//                }
+//
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
+}   item_product.xml 
+<!-- item_product.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ProgressBar
+        android:paddingTop="@dimen/_3sdp"
+        android:id="@+id/prod_horizontal_progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-8dp"
+        android:layout_marginBottom="-8dp"
+        android:indeterminate="true"
+        android:paddingBottom="0dp"
+        android:visibility="gone" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/cd_product_price_recycleVW"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:layout_weight="1"
+        android:textSize="@dimen/_12sdp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+
+</LinearLayout>
+fragment_s_product_price_screen.xml 
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:card_view="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="@dimen/_10sdp"
+        app:cardElevation="@dimen/_5sdp"
+        app:cardUseCompatPadding="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/order_background_color_LY"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/grey_2"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/_2sdp">
+
+                <TextView
+                    android:id="@+id/product_name_textView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/_7sdp"
+                    android:layout_weight="1"
+
+                    android:text="@string/generic_companyName"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black" />
+
+                <CheckBox
+                    android:id="@+id/select_cb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:button="@drawable/selector_image_on_checkbox_seller"
+                    android:buttonTint="@color/cyan_A700"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <!-- END OF TOP HEADER PIC AND DROWN DOWN -->
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:background="@drawable/box_10dp"
+                android:visibility="visible"
+                app:cardCornerRadius="@dimen/_5sdp"
+                app:cardUseCompatPadding="true">
+
+                <ImageView
+                    android:id="@+id/product_image_imageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/_200sdp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/image_7"
+                    android:visibility="visible" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="visible">
+
+                    <TextView
+                        android:id="@+id/add_item_product"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end|bottom"
+                        android:background="@drawable/border_half_radius"
+                        android:backgroundTint="@color/grey_900"
+                        android:padding="@dimen/_10sdp"
+                        android:text="@string/s_add_products"
+                        android:textColor="@color/white"
+                        android:textStyle="bold"
+                        android:visibility="visible"
+                        app:drawableStartCompat="@drawable/seller_add_product"
+                        app:drawableTint="@color/white" />
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!--END NEW CARD VIEW 9 DEC 2022 AT 14:46 -->
+
+            <LinearLayout
+                android:layout_marginStart="@dimen/_5sdp"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_10sdp"
+                android:background="@drawable/border_spinner_bg"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <Spinner
+                    android:id="@+id/unitlist"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_margin="3dp"
+                    android:layout_marginBottom="@dimen/_5sdp"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_marginBottom="@dimen/_10sdp"
+                android:layout_marginStart="@dimen/_5sdp"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_15sdp"
+                android:background="@drawable/border_spinner_bg"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <Spinner
+                    android:id="@+id/unitvalues"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/_48sdp"
+                    android:layout_gravity="center"
+                    android:layout_margin="3dp"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1" />
+            </LinearLayout>
+
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:visibility="visible"
+                android:id="@+id/list_products"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                card_view:listitem="@layout/single_row_category_product_price_screen" />
+
+
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/_15sdp" />
+
+</LinearLayout>
+
+    <!--<?xml version="1.0" encoding="utf-8"?>-->
+<!--<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    xmlns:app="http://schemas.android.com/apk/res-auto"-->
+<!--    xmlns:card_view="http://schemas.android.com/tools"-->
+
+<!--    android:layout_width="match_parent"-->
+<!--    android:layout_height="wrap_content"-->
+<!--    android:orientation="vertical">-->
+
+
+<!--    <LinearLayout-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="vertical">-->
+
+<!--        <LinearLayout-->
+<!--            android:id="@+id/order_background_color_LY"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:background="@color/amber_50"-->
+<!--            android:gravity="center_vertical"-->
+<!--            android:orientation="horizontal"-->
+<!--            android:padding="@dimen/_7sdp">-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/product_name_textView"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginStart="@dimen/_7sdp"-->
+<!--                android:layout_weight="1"-->
+<!--                android:maxLines="3"-->
+<!--                android:text="@string/generic_companyName"-->
+<!--                android:textAppearance="@style/TextAppearance.AppCompat.Subhead"-->
+<!--                android:textColor="@color/black" />-->
+
+<!--            <CheckBox-->
+<!--                android:id="@+id/select_cb"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_gravity="end"-->
+<!--                android:button="@drawable/selector_image_on_checkbox_seller"-->
+<!--                android:buttonTint="@color/cyan_A700"-->
+<!--                android:gravity="center" />-->
+<!--        </LinearLayout>-->
+
+
+<!--        &lt;!&ndash; END OF TOP HEADER PIC AND DROWN DOWN &ndash;&gt;-->
+
+
+<!--        <LinearLayout-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:orientation="vertical">-->
+
+<!--            <androidx.cardview.widget.CardView-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_gravity="center"-->
+
+<!--                android:background="@drawable/box_10dp"-->
+<!--                android:visibility="visible"-->
+<!--                app:cardCornerRadius="@dimen/_5sdp"-->
+<!--                app:cardUseCompatPadding="true">-->
+
+<!--                <ImageView-->
+<!--                    android:id="@+id/product_image_imageView"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="@dimen/_200sdp"-->
+<!--                    android:adjustViewBounds="true"-->
+<!--                    android:scaleType="centerCrop"-->
+<!--                    android:src="@drawable/image_7"-->
+<!--                    android:visibility="visible" />-->
+
+<!--                <FrameLayout-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:visibility="visible">-->
+
+
+<!--                    <TextView-->
+
+<!--                        android:id="@+id/seller_minimum_order_TV"-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:layout_gravity="end|bottom"-->
+<!--                        android:background="@drawable/border_half_radius"-->
+<!--                        android:backgroundTint="@color/grey_900"-->
+<!--                        android:padding="@dimen/_10sdp"-->
+<!--                        android:text="@string/s_add_products"-->
+<!--                        android:textColor="@color/white"-->
+<!--                        android:textStyle="bold"-->
+<!--                        android:visibility="visible"-->
+<!--                        app:drawableStartCompat="@drawable/seller_add_product"-->
+<!--                        app:drawableTint="@color/white" />-->
+<!--                </FrameLayout>-->
+<!--            </androidx.cardview.widget.CardView>-->
+
+
+
+
+<!--            &lt;!&ndash;END NEW CARD VIEW 9 DEC 2022 AT 14:46 &ndash;&gt;-->
+<!--            <LinearLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+
+<!--                android:layout_marginTop="@dimen/_10sdp"-->
+
+<!--                android:background="@drawable/border_spinner_bg"-->
+<!--                android:gravity="center"-->
+<!--                android:orientation="vertical">-->
+
+<!--                <Spinner-->
+<!--                    android:id="@+id/unitlist"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="48dp"-->
+<!--                    android:layout_margin="3dp"-->
+<!--                    android:layout_marginBottom="@dimen/_5sdp"-->
+<!--                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"-->
+
+<!--                    />-->
+<!--            </LinearLayout>-->
+
+<!--            <LinearLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+
+<!--                android:layout_marginTop="@dimen/_15sdp"-->
+
+
+<!--                android:background="@drawable/border_spinner_bg"-->
+<!--                android:gravity="center"-->
+<!--                android:orientation="vertical">-->
+
+<!--                <Spinner-->
+<!--                    android:id="@+id/unitvalues"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="@dimen/_48sdp"-->
+<!--                    android:layout_gravity="center"-->
+<!--                    android:layout_margin="3dp"-->
+
+<!--                    android:layout_weight="1"-->
+<!--                    android:textAppearance="@style/TextAppearance.AppCompat.Body1" />-->
+
+<!--            </LinearLayout>-->
+
+<!--        </LinearLayout>-->
+
+<!--    </LinearLayout>-->
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/bottomLinear"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="vertical"-->
+<!--        android:visibility="visible">-->
+<!--        &lt;!&ndash;SEARCH DHABA&ndash;&gt;-->
+<!--        &lt;!&ndash;<RelativeLayout-->
+<!--            android:layout_margin="5dp"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="60dp"-->
+<!--            android:background="@drawable/background_drop"><Spinner-->
+<!--                android:id="@+id/spinner1"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content" /></RelativeLayout>&ndash;&gt;-->
+<!--        &lt;!&ndash; piece prices linear layout &ndash;&gt;-->
+
+<!--        <androidx.recyclerview.widget.RecyclerView-->
+<!--            android:id="@+id/list"-->
+
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"-->
+<!--            card_view:listitem="@layout/single_row_category_product_price_screen" />-->
+
+<!--    </LinearLayout>-->
+
+<!--    <View-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="@dimen/_15sdp" />-->
+
+<!--</LinearLayout>-->
+single_row_category_product_price_screen.xml 
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/_10sdp"
+    android:background="@color/white"
+    android:orientation="vertical">
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+
+
+
+        <LinearLayout
+         android:layout_marginTop="@dimen/_10sdp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/box_10dp"
+            android:orientation="vertical"
+            android:padding="@dimen/_20sdp">
+
+            <LinearLayout
+
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:text="@string/quantity"
+                    />
+
+                <TextView
+
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/_10sdp"
+                    android:textColor="@color/text_bold_red"
+                    />
+
+            </LinearLayout>
+
+            <!-- new cod-->
+
+            <LinearLayout
+                android:id="@+id/quantityLY"
+
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:layout_gravity="center"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/quantity"
+                    />
+
+                <TextView
+                    android:id="@+id/qunatityTypeTV"
+                    android:gravity="start|center"
+                    android:layout_gravity="start|center"
+
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:layout_height="@dimen/_48sdp"
+                    android:background="@drawable/cd_underline_text"
+                    android:hint="@string/zero_zero"
+                    />
+            </LinearLayout>
+
+            <!-- e code-->
+
+
+            <!--
+              <View
+                  android:layout_width="match_parent"
+                  android:layout_height="@dimen/oneDip"
+                  android:background="@color/grey500" /> -->
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/s_actual_cost"
+                    />
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/costPriceET"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:layout_height="@dimen/_48sdp"
+                    android:background="@drawable/cd_underline_text"
+                    android:hint="@string/zero_zero"
+                    android:imeOptions="actionDone"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+
+
+            <!--
+             <View
+                 android:layout_width="match_parent"
+                 android:layout_height="@dimen/oneDip"
+                 android:background="@color/grey500" /> -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/MRP"
+                    />
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/mrp_priceET"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:layout_height="@dimen/_48sdp"
+                    android:background="@drawable/cd_underline_text"
+                    android:hint="@string/zero_zero"
+                    android:imeOptions="actionDone"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+
+            <!--
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/oneDip"
+                    android:background="@color/grey500" /> -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/allorder_order_sell_price_text"
+                    />
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/sellPriceET"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:layout_height="@dimen/_48sdp"
+                    android:background="@drawable/cd_underline_text"
+                    android:hint="@string/zero_zero"
+                    android:imeOptions="actionDone"
+                    android:inputType="numberDecimal"
+                    android:textColor="@color/text_bold_red"/>
+            </LinearLayout>
+
+            <!--
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/oneDip"
+                android:background="@color/grey500" /> -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <TextView
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:textColor="@color/black"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/cash_back"
+                    />
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/cashBackET"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:layout_height="@dimen/_48sdp"
+                    android:background="@drawable/cd_underline_text"
+                    android:imeOptions="actionDone"
+
+                    android:hint="@string/zero_zero"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+
+            <!--
+              <View
+                  android:layout_width="match_parent"
+                  android:layout_height="@dimen/oneDip"
+                  android:background="@color/grey500" /> -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_7sdp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                        android:textColor="@color/black"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/your_profit"
+                        />
+
+                    <TextView
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/_15sdp"
+                        android:layout_marginEnd="@dimen/_30sdp"
+
+                        android:maxLines="2"
+                        android:singleLine="false"
+                        android:text="@string/s_profit_formula"
+                        android:textColor="@color/green_400"
+                        android:textSize="@dimen/_10sdp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/profitET"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    android:layout_width="@dimen/_130ssp"
+                    android:imeOptions="actionDone"
+                    android:layout_height="@dimen/_48sdp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/cd_underline_text"
+                    android:enabled="false"
+                    android:hint="@string/zero_zero"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+
+
+        </LinearLayout>
+
+
+
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>
